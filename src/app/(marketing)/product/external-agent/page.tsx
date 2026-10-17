@@ -33,7 +33,7 @@ type Agent = {
     description: string;
     linkText: string;
     href: string;
-    icon: ReactNode;
+    icon: string;
 };
 
 const agents: Agent[] = [
