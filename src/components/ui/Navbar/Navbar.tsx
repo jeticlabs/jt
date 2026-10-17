@@ -2,10 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import JeticIcon from "@/components/paper-shader/gem-smoke";
 import { walsheim } from "@/app/fonts";
-import Image from "next/image";
-import { images } from "@/lib/images";
 import { NoiseBackground } from "../noise-background";
 import { JeticIcon } from "@/components/jetic-icon";
 
