@@ -1,0 +1,8 @@
+export { default as MarketingNavbar } from "./marketing-navbar";
+export { default as CursorsLayer } from "./cursors-layer";
+export { default as Hero } from "./hero";
+export { default as FigureShowcase } from "./figure-showcase";
+export { default as PromptBox } from "./prompt-box";
+export { default as FooterLinks } from "./footer-links";
+export { default as SiteFooter } from "./site-footer";
+export { default as PlatformSection } from "./platform-section";
