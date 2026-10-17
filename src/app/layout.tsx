@@ -49,7 +49,20 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: [{ url: "/brand/jetic.svg", type: "image/svg+xml", sizes: "any" }],
+    icon: [
+      {
+        url: "/brand/jetic-black.svg",
+        type: "image/svg+xml",
+        sizes: "any",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/brand/jetic.svg",
+        type: "image/svg+xml",
+        sizes: "any",
+        media: "(prefers-color-scheme: dark)",
+      },
+    ],
   },
   openGraph: {
     type: "website",
