@@ -195,6 +195,9 @@ function NavRow({
 
 /* ---------- Component ---------- */
 
+/** Single source of truth for sidebar width — consumed by the layout via `var(--sidebar-w)`. */
+export const SIDEBAR_WIDTH = "240px";
+
 export default function Sidebar() {
     const [active, setActive] = useState<string>("overview");
     const [expanded, setExpanded] = useState<Set<string>>(new Set(["model"]));
@@ -223,7 +226,10 @@ export default function Sidebar() {
     });
 
     return (
-        <aside className="flex h-full w-[240px] flex-col text-white antialiased border-r border-[#1e1e1e] bg-[#0a0a0a]">
+        <aside
+            style={{ "--sidebar-w": SIDEBAR_WIDTH } as React.CSSProperties}
+            className="fixed flex h-full flex-col text-white antialiased border-r border-[#1e1e1e] bg-[#0a0a0a] w-[var(--sidebar-w)]"
+        >
             {/* Search */}
             <div className="p-2 pb-2">
                 <label className="flex h-9 items-center gap-2.5 rounded-lg border border-[#222] bg-[#0d0d0d] pl-3 pr-2 text-[#666] transition-colors focus-within:border-[#3a3a3a]">

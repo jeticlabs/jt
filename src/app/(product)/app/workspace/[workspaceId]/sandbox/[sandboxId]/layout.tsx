@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { inter } from "@/app/fonts";
-import Sidebar from "@/components/ui/Sidebar/Sidebar";
+import Sidebar, { SIDEBAR_WIDTH } from "@/components/ui/Sidebar/Sidebar";
 // Authenticated shell is request-bound (session enforced backend-side),
 // so allow blocking navigation here instead of forcing a static shell.
 export const instant = false;
@@ -19,8 +19,11 @@ export default function SandboxLayout({
       </Suspense>
       <main className="flex  w-full h-full">
         <Sidebar />
-        {children}</main>
-    </div>
+        <main className="w-full h-full" style={{ marginLeft: SIDEBAR_WIDTH }}>
+          {children}
+        </main>
+      </main >
+    </div >
 
   );
 }
