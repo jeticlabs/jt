@@ -43,7 +43,7 @@ export default function MarketingNavbar() {
           <div className="flex items-center justify-end gap-2">
             <Link
               href="/sign-in"
-              className="rounded-full px-3 py-1.5 text-[13px] font-medium text-white/70 transition-colors hover:text-white"
+              className="hidden rounded-full px-3 py-1.5 text-[13px] font-medium text-white/70 transition-colors hover:text-white"
             >
               Log in
             </Link>
@@ -51,7 +51,7 @@ export default function MarketingNavbar() {
               href="/sign-up"
               className="rounded-full bg-white px-4 py-1.5 text-[13px] font-medium text-[#0a0a0a] transition-colors hover:bg-white/90"
             >
-              Sign up
+              Try Jetic Cloud
             </Link>
           </div>
         </div>
