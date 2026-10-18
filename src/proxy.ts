@@ -32,11 +32,19 @@ export function proxy(request: NextRequest) {
 
   const url = request.nextUrl.clone();
 
-  // Map hostname root to the base path; nest sub-paths underneath it.
-  url.pathname =
-    url.pathname === "/"
-      ? base
-      : `${base}${url.pathname}`;
+  // Strip the base prefix if the browser already sent it (happens when
+  // internal <Link> hrefs like /docs/start/... are clicked on docs.jetic.space —
+  // without this, the rewrite would produce /docs/docs/start/... → 404).
+  const alreadyPrefixed =
+    url.pathname === base ||
+    url.pathname.startsWith(base + "/");
+
+  const stripped = alreadyPrefixed
+    ? url.pathname.slice(base.length) || "/"
+    : url.pathname;
+
+  // Map hostname root to the base path; nest everything else beneath it.
+  url.pathname = stripped === "/" ? base : `${base}${stripped}`;
 
   return NextResponse.rewrite(url);
 }
