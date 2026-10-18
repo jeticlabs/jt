@@ -4,6 +4,7 @@ export { default as TerminalDemo } from "./terminal-demo";
 export { default as InstallBox } from "./install-box";
 export { default as FooterLinks } from "./footer-links";
 export { default as MarketingNavbar } from "./marketing-navbar";
+export { MarketingSearchModal } from "./marketing-search-modal";
 export { default as PlatformSection } from "./platform-section";
 export { default as WorkflowSection } from "./workflow-section";
 export { default as InterfacesSection } from "./interfaces-section";

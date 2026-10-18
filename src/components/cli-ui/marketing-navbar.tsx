@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useSearchContext } from "fumadocs-ui/contexts/search";
+import { useAIChat } from "@/components/ai/search";
 import { JeticIcon } from "../jetic-icon";
 
 const LINKS = [
@@ -14,7 +14,7 @@ const LINKS = [
 /** Fixed landing navbar: blurred background + hairline after scrolling. */
 export default function MarketingNavbar() {
   const [scrolled, setScrolled] = useState(false);
-  const { setOpenSearch } = useSearchContext();
+  const { setOpen } = useAIChat();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -46,7 +46,7 @@ export default function MarketingNavbar() {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setOpenSearch(true)}
+              onClick={() => setOpen(true)}
               className="hidden items-center gap-2 rounded-full border border-white/[0.14] px-3 py-1.5 text-[12px] text-white/55 hover:text-white/80 md:flex"
             >
               Search <kbd className="text-[10.5px] text-white/35">⌘K</kbd>

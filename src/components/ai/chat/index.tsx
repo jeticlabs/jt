@@ -37,6 +37,7 @@ import {
 import { Conversation, Turn } from './conversation';
 import { Markdown } from './markdown';
 import { cn } from '../../../lib/cn';
+import { JeticAnimatedIcon } from '@/components/jetic-animated-icon';
 
 /** the page a question is asked from, sent as a `data-client` part */
 export interface AIChatClientData {
@@ -194,6 +195,7 @@ export function AIChatMessages({ className }: { className?: string }) {
   if (turns.length === 0) {
     return (
       <Conversation className={className}>
+        <JeticAnimatedIcon size={200} className='mx-auto my-auto' />
         <div className="mt-auto flex flex-col">
           <p className="text-lg font-medium tracking-tight motion-safe:animate-fd-roll-in">
             {t('What do you want to know?')}
@@ -347,9 +349,9 @@ export function AIChatInput({ className }: { className?: string }) {
         onClick={
           busy
             ? () => {
-                void chat.stop();
-                inputRef.current?.focus();
-              }
+              void chat.stop();
+              inputRef.current?.focus();
+            }
             : undefined
         }
       >
@@ -519,7 +521,7 @@ const Message = memo(function Message({
           className={cn(
             '-ms-1.25 -mt-1 flex items-center motion-safe:animate-fd-fade-in',
             !last &&
-              'opacity-0 transition-opacity group-focus-within/message:opacity-100 group-hover/message:opacity-100 motion-reduce:transition-none pointer-coarse:opacity-100',
+            'opacity-0 transition-opacity group-focus-within/message:opacity-100 group-hover/message:opacity-100 motion-reduce:transition-none pointer-coarse:opacity-100',
           )}
         >
           <CopyAction text={text} className={small} />

@@ -9,8 +9,10 @@ import {
 import { buttonVariants } from "fumadocs-ui/components/ui/button";
 import { useAIChat } from "@/components/ai/search";
 import { cn } from "@/lib/utils";
+import { useCopyButton } from "fumadocs-ui/utils/use-copy-button";
+import { CheckIcon, LinkIcon } from "lucide-react";
 
-const GITHUB_REPO = "https://github.com/jeticlabs/jetic-frontend-v2";
+const GITHUB_REPO = "https://github.com/jeticlabs/jetic-cli";
 const GITHUB_BRANCH = "main";
 const SOURCE_DIR = "content/docs";
 
@@ -21,9 +23,8 @@ function usePageSource() {
   return {
     pathname,
     markdownUrl: slug ? `/llms.mdx/docs/${slug}` : "/llms.mdx/docs",
-    githubUrl: `${GITHUB_REPO}/blob/${GITHUB_BRANCH}/${SOURCE_DIR}/${
-      slug ? `${slug}.mdx` : "index.mdx"
-    }`,
+    githubUrl: `${GITHUB_REPO}/blob/${GITHUB_BRANCH}/${SOURCE_DIR}/${slug ? `${slug}.mdx` : "index.mdx"
+      }`,
   };
 }
 
@@ -67,6 +68,30 @@ function AskAi() {
   );
 }
 
+function CopyLinkButton() {
+  const pathname = usePathname() ?? "/";
+  const [copied, onClick] = useCopyButton(() => {
+    const url = `${window.location.origin}${pathname}`;
+    void navigator.clipboard.writeText(url);
+  });
+
+  return (
+    <button
+      type="button"
+      aria-label={copied ? "Link copied" : "Copy page link"}
+      title={copied ? "Link copied!" : "Copy link to this page"}
+      onClick={onClick}
+      className={cn(
+        "gap-2",
+        buttonVariants({ variant: "secondary", size: "sm" }),
+        copied && "text-green-500",
+      )}
+    >
+      {copied ? <CheckIcon /> : <LinkIcon />} Copy page link
+    </button>
+  );
+}
+
 /**
  * Page actions row: Ask AI, GitHub, Copy Markdown, Open — rendered as the
  * breadcrumb slot of every docs page (see src/app/docs/[[...slug]]/page.tsx).
@@ -91,8 +116,9 @@ export function DocsPageHeader() {
         >
           <GitHubIcon />
         </a>
+        <CopyLinkButton />
         <MarkdownCopyButton markdownUrl={markdownUrl} />
-        <ViewOptionsPopover markdownUrl={markdownUrl} githubUrl={githubUrl} />
+
       </div>
     </div>
   );
