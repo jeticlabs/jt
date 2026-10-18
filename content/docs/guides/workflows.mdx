@@ -1,0 +1,302 @@
+---
+title: Workflows
+description: Author stateful, multi-step API journeys with dynamic data, capture, injection, conditions and retries.
+icon: Workflow
+---
+
+A **Workflow** answers *what happens*. It is an ordered list of HTTP steps saved as JSON in `.jetic/workflows/`, executed against a live server with automatic state capture and header injection.
+
+This is the biggest difference between Jetic and a collection of isolated API requests: a workflow models real application behavior — register → log in → capture token → create resource → assert.
+
+## File architecture
+
+<Files>
+  <Folder name=".jetic" defaultOpen>
+    <File name="model.json — the API model" />
+    <Folder name="workflows" defaultOpen>
+      <File name="user-onboarding.json" />
+      <File name="checkout-flow.json" />
+      <File name="2fa-transfer.json" />
+    </Folder>
+    <File name="memory.json — runtime state" />
+  </Folder>
+</Files>
+
+Each step is an HTTP call to an endpoint defined in [`model.json`](/docs/reference/artifacts). Steps run in order and share a runtime memory so later steps can reuse what earlier steps produced.
+
+## Step fields
+
+<TypeTable
+  type={{
+    name: { type: 'string', required: true, description: 'Step label shown in CLI logs and Jetic Studio.' },
+    method: { type: 'GET | POST | PUT | PATCH | DELETE', required: true, description: 'HTTP verb for the request.' },
+    path: { type: 'string', required: true, description: 'Endpoint route path, e.g. /api/v1/auth/login. Path params use :id and resolve from a body field or captured key — template interpolation does not apply to paths.' },
+    description: { type: 'string', description: 'Human-readable purpose of this step.' },
+    expectStatus: { type: 'number', default: '200', description: 'Expected success status. A mismatched status fails the step.' },
+    continueOnStatus: { type: 'number[]', description: 'Extra status codes treated as a pass, e.g. [404, 409].' },
+    body: { type: 'object', description: 'Request payload. Values may be literals or templates (faker, workflow, memory, env, human).' },
+    captureInput: { type: 'Record<string, string>', description: 'Saves resolved request body fields to memory BEFORE the request is sent. Key is the memory name, value is the body field name.' },
+    capture: { type: 'Record<string, string>', description: 'Saves response fields to memory AFTER a successful response. Value is a dot-notation path into the response body.' },
+    inject: { type: 'Record<string, string>', description: 'Injects memory values into headers ("header:Name") or body fields ("body:field") before the call.' },
+    condition: { type: 'object', description: 'Skips the step when the condition is not met. Skipped steps count as passed.' },
+    onFailure: { type: "'abort' | 'continue'", default: "'abort'", description: 'Stop the workflow on failure, or log it and continue. Captures are skipped for a failed step.' },
+    retry: { type: '{ times, delayMs }', description: 'Per-step retry policy, overriding the workflow-level default.' },
+  }}
+/>
+
+The workflow root also accepts `name`, `description`, `version`, `environment`, and a global `retry` default that every step inherits.
+
+## Template syntax
+
+Jetic evaluates placeholders inside string values across `body`, `inject`, and other string fields.
+
+<Tabs items={['faker', 'workflow / memory', 'env', 'human']}>
+  <Tab value="faker">
+    Generate realistic fake data at execution time:
+
+    | Placeholder | Example output |
+    | :--- | :--- |
+    | `{{faker.internet.email}}` | `user_8f9a@example.com` |
+    | `{{faker.internet.password}}` | `kX9#mL2$vP1` |
+    | `{{faker.person.fullName}}` | `Sarah Connor` |
+    | `{{faker.company.name}}` | `Acme Dynamics Inc` |
+    | `{{faker.string.uuid}}` | `a1b2c3d4-e5f6-7890-abcd-1234567890ab` |
+    | `{{faker.phone.number}}` | `+1-555-019-2834` |
+    | `{{faker.word.noun}}` | `workspace` |
+    | `{{faker.commerce.productName}}` | `Ergonomic Aluminum Keyboard` |
+  </Tab>
+  <Tab value="workflow / memory">
+    Read values captured during the current run, or persisted in `.jetic/memory.json`:
+
+    - `{{workflow:accessToken}}` — captured earlier in this execution
+    - `{{memory:defaultUserEmail}}` — stored in `.jetic/memory.json`
+  </Tab>
+  <Tab value="env">
+    Read host environment variables:
+
+    - `{{env:API_BASE_URL}}`
+    - `{{env:STAGE_TOKEN}}`
+  </Tab>
+  <Tab value="human">
+    Pause execution and ask the operator for a value that cannot be known in advance (OTP/2FA codes, real secrets):
+
+    ```json
+    "body": { "otpCode": "{{human:admin_otp_code}}" }
+    ```
+
+    - The first response is cached to `human:admin_otp_code` memory for later steps.
+    - In CI, set `JETIC_HUMAN_ADMIN_OTP_CODE` to skip the prompt.
+  </Tab>
+</Tabs>
+
+<Callout type="warn" title="Reserve {{human:*}} for the truly unknowable">
+Never use `{{human:key}}` for values faker can generate (emails, names, UUIDs, passwords). It pauses the run and blocks automation.
+</Callout>
+
+## Injection (`inject`)
+
+The `inject` block places captured memory into request headers or body fields before the call executes.
+
+```json
+"inject": {
+  "header:Authorization": "Bearer {{workflow:accessToken}}",
+  "header:X-Workspace-ID": "{{workflow:workspaceId}}",
+  "body:tenantId": "{{workflow:tenantId}}"
+}
+```
+
+A bare key without a prefix is treated as a header:
+
+```json
+"inject": { "Authorization": "Bearer {{workflow:accessToken}}" }
+```
+
+<Callout title="Auth rule">
+Every step against an authenticated endpoint must carry an `inject` entry for `header:Authorization` (or a `security` binding in the model).
+</Callout>
+
+## Capture
+
+Jetic has two capture mechanisms. Together they make multi-step journeys possible.
+
+<Tabs items={['captureInput (pre-flight)', 'capture (post-flight)']}>
+  <Tab value="captureInput (pre-flight)">
+    Saves resolved **request** body fields to memory *before* the request is sent. Use it to remember generated credentials so later steps can reuse the exact same values.
+
+    ```json
+    "body": {
+      "email": "{{faker.internet.email}}",
+      "password": "{{faker.internet.password}}"
+    },
+    "captureInput": {
+      "workflow:userEmail": "email",
+      "workflow:userPassword": "password"
+    }
+    ```
+  </Tab>
+  <Tab value="capture (post-flight)">
+    Saves **response** fields to memory *after* a successful response, using dot-notation paths.
+
+    ```json
+    "capture": {
+      "workflow:accessToken": "data.tokens.accessToken",
+      "workflow:userId": "data.user.id",
+      "workflow:firstItem": "items[0].id"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Conditions
+
+A condition is evaluated before the step runs. If it evaluates to `false`, the step is **skipped** (counted as passed) and the workflow continues.
+
+```json
+"condition": {
+  "if": "{{workflow:userRole}}",
+  "equals": "admin"
+}
+```
+
+| Operator | Meaning |
+| :--- | :--- |
+| `equals` / `notEquals` | Exact string equality / inequality |
+| `contains` | Substring inclusion |
+| `exists` | Value is non-empty (`true`) or empty (`false`) |
+| `greaterThan` / `lessThan` | Numeric comparison |
+| `in` | Membership in a string array |
+
+## Failure handling & retries
+
+`onFailure` controls what happens when a step fails:
+
+- **`abort`** (default) — stop the workflow immediately.
+- **`continue`** — log the failure, skip that step's captures, and proceed. Useful for optional cleanup and negative tests.
+
+`continueOnStatus` treats specified non-2xx codes as passes:
+
+```json
+"expectStatus": 200,
+"continueOnStatus": [404, 409]
+```
+
+`retry` re-attempts a step on network error or a failed status assertion. Set a global default and override per step:
+
+```json
+"retry": { "times": 3, "delayMs": 1000 }
+```
+
+## Full example
+
+A production-style journey: workspace setup, login token capture, an interactive 2FA prompt, a conditional admin action, a failure-tolerant audit read, and logout.
+
+```json
+{
+  "name": "Enterprise Workspace Setup & 2FA Verification Flow",
+  "description": "Workspace setup, login, 2FA, conditional team creation, and teardown.",
+  "version": "0.3",
+  "environment": "local",
+  "retry": { "times": 2, "delayMs": 500 },
+  "steps": [
+    {
+      "name": "1. Admin Workspace Registration",
+      "method": "POST",
+      "path": "/api/v1/workspaces/setup",
+      "expectStatus": 201,
+      "body": {
+        "workspaceName": "{{faker.company.name}} Workspace",
+        "adminEmail": "{{faker.internet.email}}",
+        "adminPassword": "{{faker.internet.password}}",
+        "adminName": "{{faker.person.fullName}}"
+      },
+      "captureInput": {
+        "workflow:adminEmail": "adminEmail",
+        "workflow:adminPassword": "adminPassword"
+      },
+      "capture": { "workflow:workspaceId": "data.workspace.id" }
+    },
+    {
+      "name": "2. Admin Login & JWT Issuance",
+      "method": "POST",
+      "path": "/api/v1/auth/login",
+      "expectStatus": 200,
+      "body": {
+        "email": "{{workflow:adminEmail}}",
+        "password": "{{workflow:adminPassword}}"
+      },
+      "capture": {
+        "workflow:accessToken": "data.tokens.access",
+        "workflow:userRole": "data.user.role"
+      }
+    },
+    {
+      "name": "3. Interactive 2FA Verification",
+      "method": "POST",
+      "path": "/api/v1/auth/verify-2fa",
+      "expectStatus": 200,
+      "condition": { "if": "{{workflow:requires2FA}}", "equals": "true" },
+      "inject": { "header:Authorization": "Bearer {{workflow:accessToken}}" },
+      "body": { "otpCode": "{{human:admin_otp_code}}" },
+      "capture": { "workflow:verifiedToken": "data.sessionToken" },
+      "retry": { "times": 3, "delayMs": 1000 }
+    },
+    {
+      "name": "4. Provision Team (Admin Only)",
+      "method": "POST",
+      "path": "/api/v1/teams",
+      "expectStatus": 201,
+      "condition": { "if": "{{workflow:userRole}}", "equals": "admin" },
+      "inject": { "header:Authorization": "Bearer {{workflow:verifiedToken}}" },
+      "body": {
+        "workspaceId": "{{workflow:workspaceId}}",
+        "teamName": "Engineering Division"
+      },
+      "capture": { "workflow:teamId": "data.id" }
+    },
+    {
+      "name": "5. Optional Audit Check",
+      "method": "GET",
+      "path": "/api/v1/audit/logs",
+      "expectStatus": 200,
+      "continueOnStatus": [404],
+      "onFailure": "continue",
+      "inject": { "header:Authorization": "Bearer {{workflow:verifiedToken}}" }
+    },
+    {
+      "name": "6. Session Logout",
+      "method": "POST",
+      "path": "/api/v1/auth/logout",
+      "expectStatus": 200,
+      "inject": { "header:Authorization": "Bearer {{workflow:verifiedToken}}" }
+    }
+  ]
+}
+```
+
+## Running workflows
+
+<Tabs items={['CLI', 'MCP (AI IDE)']}>
+  <Tab value="CLI">
+    ```bash
+    # Run against the default environment
+    jetic simulate workflow --workflow .jetic/workflows/user-onboarding.json
+
+    # Clear memory first
+    jetic simulate workflow --workflow .jetic/workflows/user-onboarding.json --clear-memory
+
+    # List saved workflows
+    jetic simulate workflow --list
+    ```
+  </Tab>
+  <Tab value="MCP (AI IDE)">
+    With the [MCP server connected](/docs/guides/ai-ide-mcp), ask your assistant:
+
+    > Run `.jetic/workflows/user-onboarding.json` and show me the step-by-step trace.
+
+    The agent calls `jetic_validate_workflow` → `jetic_simulate_workflow` and reports each step's status, captures and injected headers.
+  </Tab>
+</Tabs>
+
+<Callout type="info" title="Author with validate → create → simulate">
+When building workflows through an AI IDE, always validate before saving. `jetic_create_workflow` refuses to save while validation errors remain, and `jetic_validate_workflow` checks that every `{{scope:key}}` is captured by an earlier step.
+</Callout>

@@ -1,0 +1,76 @@
+---
+title: Introduction
+description: Jetic is a code-aware, agentic API behavior testing platform that understands your API from its source.
+icon: House
+---
+No manual scripts. No guessed constraints. No stale docs.
+
+<AIAgentCallout />
+
+## What Jetic does
+
+Traditional API testing tools force you to hand-write repetitive request scripts, hardcode authorization tokens, and guess what your handlers actually validate. Jetic starts from your code instead:
+
+1. **Static source scanning** — parses your project with `ts-morph` (no server boot) to discover routes, path parameters, nested routers, and recognizable middleware.
+2. **Behavioral model** — writes a versioned, strongly-typed graph of your API into [`.jetic/model.json`](/docs/reference/artifacts), including exact source provenance (file + line).
+3. **Stateful workflows** — executes multi-step journeys from [`.jetic/workflows/*.json`](/docs/guides/workflows) with dynamic capture and header injection.
+4. **Simulation & traces** — runs your journeys against a live server and renders every step as an interactive graph in [Jetic Studio](/docs/guides/jetic-studio).
+
+<Callout title="No AI key required">
+Jetic does not need an OpenRouter/OpenAI account. The static scanner is keyless, and when you connect Jetic to your code editor over [MCP](/docs/guides/ai-ide-mcp) your editor's own model drives the same tools.
+</Callout>
+
+## The four primitives
+
+Everything in Jetic revolves around four objects:
+
+| Primitive | Answers | Artifact |
+| :--- | :--- | :--- |
+| **Model** | *What exists?* | `.jetic/model.json` |
+| **Workflow** | *What happens?* | `.jetic/workflows/*.json` |
+| **Memory** | *What carries between steps?* | `.jetic/memory.json` |
+| **Trace** | *What actually ran?* | Jetic Studio `/traces` |
+
+## The 4-phase lifecycle
+
+Jetic operates on a strict, predictable lifecycle so the model stays faithful to your code:
+
+| Phase | Command / tool | Purpose |
+| :--- | :--- | :--- |
+| 1. Initialize | `jetic init` | Scaffold `.jetic/` and an empty model |
+| 2. Scan & model | `jetic scan` | Discover endpoints from source |
+| 3. Verify | `jetic_verify_model` | Validate completeness and structure |
+| 4. Simulate | `jetic simulate workflow` | Execute stateful journeys |
+
+## Documentation map
+
+<Cards>
+  <Card title="Getting Started" href="/docs/start/getting-started">
+    Install Jetic and run your first scan in under a minute.
+  </Card>
+  <Card title="Installation" href="/docs/start/installation">
+    Global install, from source, and package-vs-binary details.
+  </Card>
+  <Card title="CLI Reference" href="/docs/reference/cli-reference">
+    Every command, flag, and example.
+  </Card>
+  <Card title="Workflows" href="/docs/guides/workflows">
+    Author stateful journeys with capture, inject, conditions and retries.
+  </Card>
+  <Card title="Jetic Studio" href="/docs/guides/jetic-studio">
+    The local web IDE: model, inspect, simulations, memory, traces, changes.
+  </Card>
+  <Card title="AI IDE (MCP)" href="/docs/guides/ai-ide-mcp">
+    Connect Jetic to Claude Code, Cursor, opencode and more.
+  </Card>
+  <Card title="Artifacts & Schemas" href="/docs/reference/artifacts">
+    Reference for every `.jetic/` file Jetic reads and writes.
+  </Card>
+  <Card title="Screenshots" href="/docs/resources/images">
+    A visual tour of Jetic Studio and the CLI.
+  </Card>
+</Cards>
+
+<Callout type="info" title="Framework support">
+Automated AST scanning currently supports **Node.js & Express (TypeScript)** projects. For other stacks (FastAPI, Go, NestJS, …), model endpoints manually in Jetic Studio's **Behavioral Model** page, or let your editor's AI author the model through the [MCP tools](/docs/guides/ai-ide-mcp).
+</Callout>

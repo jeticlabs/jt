@@ -1,0 +1,136 @@
+---
+title: Getting Started
+description: Install Jetic, initialize a project, and scan your Express source in under a minute.
+icon: Zap
+---
+
+This guide gets you from zero to a populated behavioral model. Nothing here needs an AI provider key.
+
+## Prerequisites
+
+- **Node.js** `>= 20`
+- A backend project (Express + TypeScript gets automatic scanning; other stacks are supported via manual modeling)
+
+## 1. Install the CLI
+
+```bash
+npm install -g jetic-cli
+```
+
+See [Installation](/docs/start/installation) for `npx`, building from source, and the package-vs-binary distinction.
+
+## 2. Initialize and scan
+
+From your backend project root:
+
+```bash
+# Scaffold the .jetic/ workspace
+jetic init
+
+# Statically scan Express/TypeScript routes into .jetic/model.json
+jetic scan
+```
+
+`jetic init` creates the `.jetic/` directory and an empty model. `jetic scan` reads your `tsconfig.json`, discovers routes, nested router prefixes, path parameters, middleware names, and source locations, then writes them to `.jetic/model.json`.
+
+![Jetic CLI first run](/docs/cli-init.png)
+
+<Callout title="What the scanner does not do">
+The scan is fully static. It discovers *routes* and *middleware* — it does **not** infer request/response schemas or business constraints. Add those manually in Studio or through the [MCP tools](/docs/guides/ai-ide-mcp).
+</Callout>
+
+## 3. Choose your interface
+
+<Tabs items={['Terminal + Jetic Studio', 'AI IDE (MCP)']}>
+  <Tab value="Terminal + Jetic Studio">
+    Launch the local web IDE to explore the model, run simulations, and inspect traces:
+
+    ```bash
+    jetic dev
+    ```
+
+    This serves Jetic Studio at [http://localhost:8787](http://localhost:8787) (override with `jetic dev --port 9000`). See [Jetic Studio](/docs/guides/jetic-studio).
+
+    You can also stay entirely in the terminal:
+
+    ```bash
+    jetic inspect
+    jetic inspect endpoint GET /api/orders/:id
+    ```
+  </Tab>
+  <Tab value="AI IDE (MCP)">
+    Let the AI assistant inside your editor drive Jetic:
+
+    ```bash
+    jetic mcp
+    ```
+
+    Add the server to your editor config, then ask it to re-analyse your project and build the model. Full setup for opencode, Claude Code, Cursor, Antigravity, Windsurf and VS Code lives in [AI IDE Integration](/docs/guides/ai-ide-mcp).
+  </Tab>
+</Tabs>
+
+## The 4-phase lifecycle
+
+Jetic follows a strict order. Skipping or reordering phases is what produces stale or incomplete models.
+
+<Steps>
+  <Step>
+    ### 1. Initialize
+
+    ```bash
+    jetic init
+    ```
+
+    Creates `.jetic/` and an empty `model.json` in the project root.
+  </Step>
+  <Step>
+    ### 2. Scan & model
+
+    ```bash
+    jetic scan
+    ```
+
+    For Express + TypeScript this is a keyless static AST scan. For any other stack, model each endpoint by hand or via MCP (`jetic_add_endpoint`).
+  </Step>
+  <Step>
+    ### 3. Verify
+
+    Run `jetic_verify_model` (via MCP) until every endpoint has a description, at least one tag, and described parameters and responses.
+  </Step>
+  <Step>
+    ### 4. Simulate
+
+    ```bash
+    jetic simulate workflow --workflow .jetic/workflows/user-onboarding.json
+    ```
+
+    Execute a stateful journey against a live server. See [Workflows](/docs/guides/workflows).
+  </Step>
+</Steps>
+
+## Quickstart with the bundled example
+
+The repository ships an Express fixture you can drive end to end:
+
+```bash
+cd examples/express-shop
+
+jetic init        # Scaffold .jetic/
+jetic scan        # Build .jetic/model.json
+jetic inspect     # Print discovered model metrics
+jetic dev         # Open Jetic Studio
+```
+
+## Where to go next
+
+<Cards>
+  <Card title="CLI Reference" href="/docs/reference/cli-reference">
+    Every command and flag.
+  </Card>
+  <Card title="Workflows" href="/docs/guides/workflows">
+    Author multi-step journeys with capture and injection.
+  </Card>
+  <Card title="Troubleshooting" href="/docs/guides/ai-ide-mcp">
+    Fix "no tools found", wrong-project, and fetch failures.
+  </Card>
+</Cards>

@@ -5,9 +5,9 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
-    title: "curl vs Jetic: From HTTP requests to code-aware API testing",
+    title: "curl vs Jetic: One request, or a deterministic, stateful workflow",
     description:
-        "curl gives you direct control over HTTP requests. Jetic adds a code-aware, repeatable API testing workflow around your application.",
+        "curl sends a single HTTP request. Jetic runs ordered JSON steps that capture values from one response and inject them into the next — deterministically, with no model in the loop.",
 };
 
 /* ----------------------------- Content ----------------------------- */
@@ -24,49 +24,54 @@ const navItems = [
 ];
 
 const tableRows = [
-    ["Primary purpose", "Transfer data and make HTTP requests", "Code-aware API testing and simulation workflows"],
-    ["Request execution", "Direct command-line requests", "Supported requests and simulations through Jetic workflows"],
-    ["API context", "You supply the request details", "Designed to use a model of your API and codebase"],
-    ["Repeatability", "Shell scripts and external tooling", "Reusable testing workflows and simulations"],
-    ["Multi-step testing", "Scripts and custom orchestration", "Structured workflows where supported"],
-    ["AI integration", "Can be used by AI agents as a command-line tool", "MCP integration exposes supported Jetic tools to compatible agents"],
-    ["Failure investigation", "Inspect response, status, and output", "Combine available simulation results with API context"],
-    ["Automation", "Shell scripts, CI jobs, and other integrations", "Configured workflows and automation capabilities"],
-    ["Best fit", "Quick requests, debugging, scripting, and HTTP transfers", "Teams building repeatable, code-aware API testing workflows"],
+    ["Primary purpose", "Send HTTP requests and inspect the response", "Run stateful API journeys from a model of your code"],
+    ["How a call is defined", "Flags typed into a shell command", "A JSON step inside a workflow file"],
+    ["API context", "You supply the URL, headers, and payload", "The endpoint comes from model.json, built by a static scan of your routes"],
+    ["State between calls", "Shell variables and glue code you write", "capture stores response fields in memory; inject sends them into later steps"],
+    ["Auth across steps", "Copy the token into every call by hand", "Capture the token once, inject Authorization on each protected step"],
+    ["Repeatability", "Whatever the script does on that machine", "The same ordered steps on every run — nothing is inferred at execution time"],
+    ["Expectations", "Read the output and compare by eye", "expectStatus asserts each step; continueOnStatus, onFailure and retry cover the edges"],
+    ["AI involvement", "An agent can run curl commands", "An agent authors and validates the workflow over MCP; the runner executes it without an LLM"],
+    ["Version control", "Scripts, if you keep them", "Workflows and the model are JSON files in .jetic/, reviewed like code"],
+    ["Best fit", "One-off requests, headers, quick debugging", "Journeys where the sequence and the state are the thing being tested"],
 ];
 
 const faqs: { q: string; a: ReactNode }[] = [
     {
         q: "Is Jetic a replacement for curl?",
-        a: "No. curl is a mature, powerful HTTP tool, and it stays the simplest option for quick requests. Jetic gives developers a more structured, code-aware approach to API testing alongside it.",
+        a: "No. curl is still the fastest way to send one request and look at what comes back. Jetic covers the layer above it: a model of your endpoints plus ordered, stateful steps that you can re-run.",
     },
     {
-        q: "Can Jetic execute HTTP requests?",
-        a: "Yes, through supported requests and simulations in Jetic workflows. For one-off requests where you only need to inspect a response, curl is still a fast choice.",
+        q: "Can Jetic send HTTP requests?",
+        a: "Yes. Every workflow step is an HTTP call against a live server, addressed with a method and path from model.json. jetic simulate workflow runs the whole list in order.",
     },
     {
-        q: "Can curl perform automated API testing?",
-        a: "Yes. curl can be scripted and run in CI jobs. You define the steps, the checks, and the orchestration yourself, usually with shell scripts or other tooling.",
+        q: "Can curl do the same journey?",
+        a: "Yes, with a shell script and something like jq to pull values out of JSON. You write the token plumbing yourself for every step. Jetic declares the capture and the injection once, in the workflow file.",
     },
     {
-        q: "What makes Jetic different from a collection of curl scripts?",
-        a: "Jetic works from a model of your API and codebase and organizes testing into reusable workflows and simulations. With curl scripts, you assemble and maintain each of those pieces yourself.",
+        q: "What exactly gets captured?",
+        a: "Two directions. captureInput saves resolved request fields before the call — generated emails and passwords you will need again. capture saves response fields after a successful response, using dot-notation paths such as data.tokens.access. Both land in run memory, and later steps read them as {{workflow:key}}.",
+    },
+    {
+        q: "Is the execution deterministic?",
+        a: "Yes. The runner walks the JSON steps in order and checks each expectStatus. Conditions, continueOnStatus, onFailure and retry are all written in the file, so nothing is decided by a model at execution time.",
+    },
+    {
+        q: "Do I need an AI provider to run workflows?",
+        a: "No. jetic init, jetic scan and jetic simulate workflow are keyless. MCP is there for authoring and validation with an agent, not for executing the run.",
     },
     {
         q: "Can AI coding agents use Jetic through MCP?",
-        a: "Yes. Jetic's MCP integration exposes supported Jetic tools to compatible agents. Which tools are available depends on your Jetic setup.",
-    },
-    {
-        q: "Can I use Jetic in CI/CD pipelines?",
-        a: "Jetic supports configured workflows and automation capabilities. Check the documentation for the integrations available for your pipeline.",
+        a: "Yes. The agent builds or edits the workflow with jetic_validate_workflow and jetic_create_workflow, then the CLI runner executes the saved file. The model writes the steps; it does not take part in the run.",
     },
     {
         q: "Does Jetic understand my Node.js codebase?",
-        a: "Jetic is designed to build a model of your API and codebase, including endpoints, schemas, and dependency information. See the documentation for supported frameworks and project setups.",
+        a: "For Express + TypeScript, jetic scan reads tsconfig.json and the router chain: paths, path parameters, nested prefixes, auth middleware, and the source file and line of each route. Schemas and business constraints are added in Studio or through MCP.",
     },
     {
-        q: "Does Jetic require AI inference for every simulation?",
-        a: "Not necessarily. AI agents can drive Jetic through MCP, but the simulations themselves are reusable workflows. The exact behavior depends on the tools and integrations you configure.",
+        q: "Can I run the same workflow in CI?",
+        a: "Yes. Workflows are files, so a job only needs jetic simulate workflow --workflow .jetic/workflows/<name>.json. Prompts for genuinely unknowable values, such as an OTP, can be supplied through environment variables so the run never blocks.",
     },
 ];
 
@@ -127,20 +132,21 @@ function Hero() {
             </p>
 
             <h1 className="max-w-[640px] text-[36px] font-medium leading-[1.05] tracking-[-0.035em] sm:text-[44px]">
-                curl vs Jetic: From HTTP requests to code-aware API testing
+                curl vs Jetic: one HTTP request, or a deterministic workflow
             </h1>
             <CurlToJetic />
 
             <div className="mt-5 flex flex-col justify-between gap-8 md:flex-row md:items-end">
                 <div className="max-w-[560px] text-[13px] leading-[1.55] text-white/55">
                     <p>
-                        curl gives you a direct way to send requests and inspect responses. Jetic builds on the
-                        API testing workflow with code-aware context, reusable simulations, and tools designed
-                        for developers who need to understand and validate how their APIs behave.
+                        curl sends one request and prints what came back. Jetic runs a workflow: an ordered list
+                        of JSON steps where each response can be captured into memory and injected into the next
+                        call, so a login token, a generated email, or a workspace ID carries through the whole
+                        journey.
                     </p>
                     <p className="mt-3">
-                        Use curl for direct requests. Use Jetic when your API testing workflow needs more
-                        context, structure, and repeatability.
+                        The runner is deterministic. Steps execute in order, every expectStatus is checked, and
+                        no model decides what happens mid-run.
                     </p>
                 </div>
                 <div className="flex shrink-0 gap-2">
@@ -155,7 +161,7 @@ function Hero() {
             <div className="mt-14 grid gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 md:grid-cols-2">
                 <div className="bg-black p-5">
                     <p className="mb-1 text-sm font-medium">curl</p>
-                    <p className="mb-5 text-xs text-white/45">Send HTTP requests. Inspect responses. Script your workflow.</p>
+                    <p className="mb-5 text-xs text-white/45">One request, one response. You hold the state.</p>
                     <Window title="terminal">
                         <p className="text-white/90">
                             <span className="text-white/40">$ </span>curl -i http://localhost:3000/api/users/123
@@ -167,22 +173,30 @@ function Hero() {
                 </div>
                 <div className="bg-black p-5">
                     <p className="mb-1 text-sm font-medium">Jetic</p>
-                    <p className="mb-5 text-xs text-white/45">Model API behavior. Build simulations. Reuse testing workflows.</p>
-                    <Window title="GET /api/users/:id">
+                    <p className="mb-5 text-xs text-white/45">Ordered steps. Captured state. Injected headers.</p>
+                    <Window title="user-onboarding.json">
                         <ul className="space-y-2">
                             <li className="flex items-center justify-between">
-                                <span className="text-white/80">valid user</span>
+                                <span className="text-white/80">1 register</span>
+                                <Pill tone="ok">201</Pill>
+                            </li>
+                            <li className="flex items-center justify-between">
+                                <span className="text-white/80">2 login</span>
                                 <Pill tone="ok">200</Pill>
                             </li>
                             <li className="flex items-center justify-between">
-                                <span className="text-white/80">missing user</span>
-                                <Pill tone="warn">404</Pill>
-                            </li>
-                            <li className="flex items-center justify-between">
-                                <span className="text-white/80">invalid ID</span>
-                                <Pill tone="err">400</Pill>
+                                <span className="text-white/80">3 create order</span>
+                                <Pill tone="ok">201</Pill>
                             </li>
                         </ul>
+                        <div className="mt-3 space-y-1 border-t border-white/10 pt-3 text-[10px] text-white/40">
+                            <p>
+                                capture <span className="text-white/70">accessToken</span> ← data.tokens.access
+                            </p>
+                            <p>
+                                inject <span className="text-white/70">header:Authorization</span>
+                            </p>
+                        </div>
                     </Window>
                 </div>
             </div>
@@ -214,8 +228,9 @@ function Glance() {
         <section id="glance" className="mx-auto max-w-[1080px] scroll-mt-16 px-6 py-20">
             <Heading className="max-w-[420px]">Jetic vs curl at a glance</Heading>
             <p className="mt-3 max-w-[520px] text-[13px] leading-[1.55] text-white/55">
-                curl can be scripted, automated, and run in CI/CD. The difference is how much of the testing
-                context and workflow you assemble yourself.
+                curl can be scripted and run in CI, and for a single endpoint it usually is the right tool. The
+                difference shows up once a test has more than one step: curl moves data between calls through
+                your shell, Jetic keeps it in workflow memory.
             </p>
 
             <div className="mt-10 overflow-x-auto rounded-xl border border-white/10">
@@ -262,30 +277,51 @@ function Differences() {
         },
         {
             title: "Understand the API",
-            label: "Jetic: Code-aware testing context",
-            body: "Work with the endpoint, schema, and dependency information represented in Jetic's project model rather than manually reconstructing the full context for every task.",
+            label: "Jetic: the route, not a hand-typed URL",
+            body: "jetic scan reads tsconfig.json and walks the Express router chain — nested prefixes, path parameters, auth middleware, and the source file and line behind each route — then writes them to model.json. Steps reference an endpoint by method and path.",
             visual: (
-                <Window title="API model" className="w-full max-w-[330px]">
+                <Window title="model.json" className="w-full max-w-[330px]">
                     <ul className="space-y-1.5 text-white/80">
                         <li><span className="text-emerald-300">GET </span>/api/users/:id</li>
                         <li><span className="text-sky-300">POST</span> /api/users</li>
-                        <li className="pl-4 text-white/40">schema: User</li>
-                        <li className="pl-4 text-white/40">depends on: db.users</li>
+                        <li className="pl-4 text-white/40">middleware: auth</li>
+                        <li className="pl-4 text-white/40">source: routes/users.ts:42</li>
                     </ul>
                 </Window>
             ),
         },
         {
-            title: "Move beyond one-off requests",
-            label: "Jetic: Reusable API simulations",
-            body: "Build repeatable workflows for testing API behavior and examining results, with the exact capabilities determined by the tools and integrations available in Jetic.",
+            title: "Let the response carry the next request",
+            label: "Jetic: capture → memory",
+            body: "capture writes response fields into run memory using dot-notation paths; captureInput remembers generated request values before the call. Later steps read them as {{workflow:key}}, so the token from step 2 is the Authorization header in step 3.",
             visual: (
-                <Window title="simulations" className="w-full max-w-[330px]">
+                <Window title="capture" className="w-full max-w-[330px]">
+                    <p className="text-white/80">
+                        2 login <span className="text-emerald-300">200</span>
+                    </p>
+                    <p className="mt-2 text-white/40">capture</p>
+                    <ul className="mt-1 space-y-1 text-white/80">
+                        <li>accessToken <span className="text-white/40">data.tokens.access</span></li>
+                        <li>userId <span className="text-white/40">data.user.id</span></li>
+                    </ul>
+                    <p className="mt-3 text-white/40">inject</p>
+                    <ul className="mt-1 space-y-1 text-white/80">
+                        <li>header:Authorization</li>
+                    </ul>
+                </Window>
+            ),
+        },
+        {
+            title: "Re-run the same sequence",
+            label: "Jetic: deterministic execution",
+            body: "A workflow is JSON in .jetic/workflows/. Steps run in order and each expectStatus is asserted; retry, continueOnStatus and onFailure are written in the file. Same file in, same sequence out — no model picks the path.",
+            visual: (
+                <Window title="workflow" className="w-full max-w-[330px]">
                     <ul className="space-y-2">
                         {[
-                            ["valid user", "ok", "200"],
-                            ["missing user", "warn", "404"],
-                            ["invalid ID", "err", "400"],
+                            ["1 register", "ok", "201"],
+                            ["2 login", "ok", "200"],
+                            ["3 create order", "ok", "201"],
                         ].map(([name, tone, code]) => (
                             <li key={name} className="flex items-center justify-between text-white/80">
                                 <span>{name}</span>
@@ -299,7 +335,7 @@ function Differences() {
         {
             title: "Use them together",
             label: "curl + Jetic",
-            body: "Use curl where direct HTTP control is the simplest solution, and Jetic where an integrated API testing workflow brings more value.",
+            body: "Probe a single request with curl while you are figuring out the payload. Once the sequence matters, encode it as a workflow and let the runner replay it.",
             visual: (
                 <div className="flex w-full max-w-[330px] items-center justify-center gap-3 font-mono text-[11px]">
                     <span className="rounded-lg border border-white/15 px-4 py-3 text-white/80">curl</span>
@@ -339,37 +375,62 @@ function Differences() {
 function Example() {
     return (
         <section id="example" className="mx-auto max-w-[1080px] scroll-mt-16 px-6 py-20">
-            <Heading className="max-w-[520px]">From a single request to a complete simulation</Heading>
+            <Heading className="max-w-[520px]">From one command to one workflow</Heading>
             <p className="mt-3 max-w-[520px] text-[13px] leading-[1.55] text-white/55">
-                The same API testing task in both tools. curl can reach many of the same outcomes with
-                scripts and additional tooling.
+                The same three-step journey: register, log in, create an order. Both versions work. The
+                difference is who moves the token between step 2 and step 3.
             </p>
 
             <div className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 md:grid-cols-2">
                 <div className="bg-black p-6">
                     <h3 className="text-[13px] font-medium">With curl</h3>
                     <Window title="terminal" className="mt-4">
-                        <p className="text-white/90">
-                            <span className="text-white/40">$ </span>curl -i http://localhost:3000/api/users/123
-                        </p>
+                        <pre className="overflow-x-auto whitespace-pre text-white/85">{`# register
+curl -s -X POST localhost:3000/api/users \\
+  -H 'content-type: application/json' \\
+  -d '{"email":"ada@example.com","password":"s3cret"}'
+
+# log in, then pull the token out yourself
+TOKEN=$(curl -s -X POST localhost:3000/api/auth/login \\
+  -H 'content-type: application/json' \\
+  -d '{"email":"ada@example.com","password":"s3cret"}' \\
+  | jq -r .data.tokens.access)
+
+# create an order as that user
+curl -i -X POST localhost:3000/api/orders \\
+  -H "authorization: Bearer $TOKEN"`}</pre>
                     </Window>
                     <p className="mt-4 text-xs leading-[1.5] text-white/50">
-                        Send the request and inspect the HTTP response. More complex scenarios can be scripted,
-                        but you must define the steps and checks yourself.
+                        Works, but the token only exists in your shell. Every new step means another variable,
+                        another jq path, and another chance to point at the wrong environment.
                     </p>
                 </div>
 
                 <div className="bg-black p-6">
                     <h3 className="text-[13px] font-medium">With Jetic</h3>
-                    <Window title="agent task" className="mt-4">
-                        <p className="text-white/90">Inspect GET /api/users/:id.</p>
-                        <p className="text-white/90">Generate a simulation for a valid user,</p>
-                        <p className="text-white/90">a missing user, and an invalid ID.</p>
-                        <p className="text-white/90">Validate the expected response behavior.</p>
+                    <Window title=".jetic/workflows/user-onboarding.json" className="mt-4">
+                        <pre className="overflow-x-auto whitespace-pre text-white/85">{`{
+  "name": "User onboarding",
+  "steps": [
+    { "name": "1. Register", "method": "POST", "path": "/api/users",
+      "expectStatus": 201,
+      "body": { "email": "{{faker.internet.email}}" },
+      "captureInput": { "workflow:email": "email" } },
+
+    { "name": "2. Log in", "method": "POST", "path": "/api/auth/login",
+      "body": { "email": "{{workflow:email}}" },
+      "capture": { "workflow:accessToken": "data.tokens.access" } },
+
+    { "name": "3. Create order", "method": "POST", "path": "/api/orders",
+      "inject": { "header:Authorization": "Bearer {{workflow:accessToken}}" } }
+  ]
+}`}</pre>
                     </Window>
                     <p className="mt-4 text-xs leading-[1.5] text-white/50">
-                        An example natural-language task for a compatible agent using Jetic&apos;s exposed tools.
-                        The actual simulation and assertions depend on what your setup supports.
+                        The runner generates the email, remembers it, captures the token from the login
+                        response, and injects it as a header. Re-run it with{" "}
+                        <span className="font-mono text-white/70">jetic simulate workflow</span> — same file,
+                        same order, same result.
                     </p>
                 </div>
             </div>
@@ -381,15 +442,15 @@ function Verdict() {
     const items = [
         {
             title: "Choose curl",
-            body: "when you need to make a quick HTTP request, inspect headers, debug an endpoint, or write a small shell script.",
+            body: "when you need to send one request, inspect headers, debug an endpoint, or write a small shell script. Nothing beats it for a direct HTTP call.",
         },
         {
             title: "Choose Jetic",
-            body: "when you want code-aware API context, reusable simulations, and a structured workflow for understanding and validating API behavior.",
+            body: "when the test is a journey: capture the token from login, reuse the generated email, inject the header on every protected step, and re-run the same JSON file tomorrow.",
         },
         {
             title: "Use both",
-            body: "Use curl where direct HTTP control is the simplest solution, and use Jetic where an integrated API testing workflow brings more value.",
+            body: "Probe with curl while you work out a payload, then encode the sequence as a workflow once the order of steps starts to matter.",
         },
     ];
 
@@ -456,29 +517,6 @@ function Faq() {
     );
 }
 
-
-
-function Panel({
-    name,
-    tagline,
-    className = "",
-    children,
-}: {
-    name: string;
-    tagline: string;
-    className?: string;
-    children: ReactNode;
-}) {
-    return (
-        <div
-            className={`w-full rounded-2xl border border-white/10 bg-black p-5 md:w-[56%] ${className}`}
-        >
-            <h3 className="text-base font-medium tracking-[-0.01em]">{name}</h3>
-            <p className="mb-4 mt-1 text-xs leading-[1.5] text-white/50">{tagline}</p>
-            {children}
-        </div>
-    );
-}
 
 function CurlToJetic() {
     return (

@@ -1,0 +1,6 @@
+{
+  "title": "More",
+  "icon": "Library",
+  "defaultOpen": true,
+  "pages": ["images", "roadmap"]
+}

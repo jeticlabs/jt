@@ -1,0 +1,114 @@
+---
+title: Installation
+description: Install jetic-cli globally, via npx, or build the monorepo from source.
+icon: Package
+---
+
+## Prerequisites
+
+- **Node.js** `>= 20`
+- **pnpm** `>= 9` (only needed when building from source)
+
+## Option A — Global NPM install
+
+```bash
+npm install -g jetic-cli
+```
+
+Once installed, npm registers the **`jetic`** binary on your `PATH`:
+
+```bash
+jetic --help
+```
+
+You can also run it without installing:
+
+```bash
+npx jetic-cli --help
+```
+
+## Option B — Build from source (monorepo)
+
+```bash
+git clone https://github.com/jeticlabs/Jetic.git
+cd Jetic
+
+pnpm install       # Install workspace dependencies
+pnpm build         # Build all packages and apps
+
+cd apps/cli
+pnpm link --global # Expose the `jetic` binary globally
+```
+
+<Callout title="Package name vs executable">
+The package is published as **`jetic-cli`** (`npm install -g jetic-cli`), but the command you type is **`jetic`** (`jetic init`, `jetic scan`, `jetic dev`, …).
+</Callout>
+
+## Verify the install
+
+```bash
+jetic --help
+jetic doctor      # Diagnose Node version, config, adapters, and ports
+```
+
+## Requirements for the target project
+
+Jetic works against an existing backend:
+
+| Requirement | Needed for |
+| :--- | :--- |
+| `package.json` | Framework and dependency detection |
+| `tsconfig.json` | Automatic `jetic scan` (Express + TypeScript only) |
+| A running server | `jetic simulate endpoint`, `jetic simulate workflow`, live MCP testing |
+
+Other frameworks and languages are supported by modeling endpoints manually in Jetic Studio, or by letting your editor's AI author the model through the [MCP tools](/docs/guides/ai-ide-mcp).
+
+## Monorepo layout
+
+Jetic is a clean TypeScript `pnpm` monorepo:
+
+<Files>
+  <Folder name="apps" defaultOpen>
+    <Folder name="cli" defaultOpen>
+      <File name="jetic-cli — CLI executable & workflow runner" />
+    </Folder>
+    <Folder name="dashboard" defaultOpen>
+      <File name="@jetic/dashboard — Jetic Studio web IDE" />
+    </Folder>
+  </Folder>
+  <Folder name="packages" defaultOpen>
+    <File name="scanner — ts-morph static Express route analyzer" />
+    <File name="model — model schema types & Zod validators" />
+    <File name="simulator — data generation & endpoint simulation" />
+    <File name="memory — scoped runtime key-value store" />
+    <File name="core — config, filesystem sync, logger & errors" />
+    <File name="mcp-server — Model Context Protocol server" />
+  </Folder>
+  <Folder name="examples">
+    <File name="express-shop — fixture application" />
+  </Folder>
+</Files>
+
+### Package responsibilities
+
+| Package | Name | Responsibility |
+| :--- | :--- | :--- |
+| `apps/cli` | `jetic-cli` | Commander CLI: scanning, simulation, memory, config, and the embedded Studio server |
+| `apps/dashboard` | `@jetic/dashboard` | Jetic Studio local web app (model explorer, simulations, traces) |
+| `packages/scanner` | `@jetic/scanner` | Static Express route analysis via `ExpressScanner` / `PathResolver` |
+| `packages/model` | `@jetic/model` | Behavioral model schema types and validators |
+| `packages/simulator` | `@jetic/simulator` | `DataGenerator`, `ResponseValidator`, `EndpointSimulator` |
+| `packages/memory` | `@jetic/memory` | Persistence for `.jetic/memory.json` |
+| `packages/core` | `@jetic/core` | Config, `.jetic` initialization, and file helpers |
+| `packages/mcp-server` | `@jetic/mcp-server` | Stdio MCP server exposing the `jetic_*` tools |
+
+## Next steps
+
+<Cards>
+  <Card title="Getting Started" href="/docs/start/getting-started">
+    Initialize and scan your first project.
+  </Card>
+  <Card title="CLI Reference" href="/docs/reference/cli-reference">
+    Every available command.
+  </Card>
+</Cards>

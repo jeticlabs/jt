@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
 
 :root {
   --background: #ffffff;
@@ -201,4 +203,42 @@ body {
     outline: none;
     box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.3);
   }
+}
+
+/* ---------- Docs (Fumadocs) — themed with the Jetic product palette ---------- */
+
+/* The docs container carries `.jetic-surface dark` (see src/app/docs/layout.tsx),
+   so it inherits the product surface (--jetic-bg, Inter, antialiasing) and runs
+   in a forced dark context. Here we map Fumadocs' own design tokens onto the
+   Jetic `--jetic-*` palette so the whole docs shell follows the global theme.
+   The `!important` on the width is required because Fumadocs pins the default
+   (268px) at md+ via a higher-specificity rule. */
+#nd-docs-layout {
+  --fd-sidebar-width: 300px !important;
+
+  --color-fd-background: var(--jetic-bg);
+  --color-fd-foreground: var(--jetic-emphasis);
+  --color-fd-muted: var(--jetic-well);
+  --color-fd-muted-foreground: var(--jetic-muted);
+  --color-fd-popover: var(--jetic-recess);
+  --color-fd-popover-foreground: var(--jetic-emphasis);
+  --color-fd-card: var(--jetic-recess);
+  --color-fd-card-foreground: var(--jetic-emphasis);
+  --color-fd-border: rgb(255 255 255 / 0.1);
+  --color-fd-primary: #ffffff;
+  --color-fd-primary-foreground: #000000;
+  --color-fd-secondary: var(--jetic-button);
+  --color-fd-secondary-foreground: var(--jetic-emphasis);
+  --color-fd-accent: var(--jetic-button);
+  --color-fd-accent-foreground: #ffffff;
+  --color-fd-ring: var(--jetic-ring);
+  --color-fd-overlay: rgb(0 0 0 / 0.6);
+}
+
+/* Fumadocs' neutral.css nudges these on the sidebar with higher specificity;
+   keep the sidebar on-palette in the forced dark context. */
+#nd-docs-layout #nd-sidebar {
+  --color-fd-muted: var(--jetic-well);
+  --color-fd-secondary: var(--jetic-button);
+  --color-fd-muted-foreground: var(--jetic-muted);
 }

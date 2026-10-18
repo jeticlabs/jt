@@ -1,0 +1,249 @@
+---
+title: AI IDE Integration (MCP)
+description: Connect Jetic to Claude Code, Cursor, opencode, Antigravity, Windsurf and VS Code over the Model Context Protocol.
+icon: Bot
+---
+
+Jetic ships a **stdio MCP server** (`jetic mcp`) that gives the AI assistant inside your editor typed tools to inspect, author, validate, and live-test your API model and workflows.
+
+It uses **your editor's own model** — there is no OpenRouter/OpenAI key, no `jetic config ai`, and no `jetic scan` required to begin. Because the AI reads your code directly, this path also works for **any backend stack** (Express, FastAPI, Go, Java, NestJS, …).
+
+```bash
+jetic mcp
+```
+
+## How project resolution works
+
+Every tool accepts an optional `projectPath`. Resolution order:
+
+<Steps>
+  <Step>
+    **`projectPath` argument** — per call, highest priority.
+  </Step>
+  <Step>
+    **`JETIC_PROJECT_PATH` environment variable** — recommended for editor configs.
+  </Step>
+  <Step>
+    **The server process working directory** — walks up the tree to find `.jetic/model.json`.
+  </Step>
+</Steps>
+
+If no `model.json` exists, read tools return `modelExists: false` with a hint instead of pretending an empty model is real. Run `jetic init` + `jetic scan` first in that case.
+
+## Editor setup
+
+All entries are **local stdio** servers. After adding the config, restart the editor (or refresh its MCP panel) and look for the `jetic_` tools.
+
+<Callout type="warn" title="Windows paths">
+Prefer `"command": "node"` with **absolute forward-slash paths** in `args` (e.g. `C:/Users/you/Jetic/packages/mcp-server/dist/index.js`). Plain `jetic` / `npx` work if the binary is on `PATH`, but absolute paths survive editor restarts and workspace switches. Windows npm shims need `cmd /c`.
+</Callout>
+
+<Tabs items={['opencode', 'Claude Code', 'Cursor', 'Antigravity', 'Claude Desktop', 'Windsurf / VS Code']}>
+  <Tab value="opencode">
+    Add to `opencode.json` (project root or `~/.config/opencode/opencode.json`). `command` is an **array**; env goes under **`environment`**:
+
+    ```json
+    {
+      "$schema": "https://opencode.ai/config.json",
+      "mcp": {
+        "jetic": {
+          "type": "local",
+          "command": ["node", "C:/Users/you/Jetic/packages/mcp-server/dist/index.js"],
+          "environment": { "JETIC_PROJECT_PATH": "C:/path/to/my-api" },
+          "enabled": true
+        }
+      }
+    }
+    ```
+
+    Or via the CLI binary (must be on `PATH`):
+
+    ```json
+    "command": ["jetic", "mcp", "--project", "C:/path/to/my-api"]
+    ```
+
+    Verify:
+
+    ```bash
+    opencode mcp list
+    ```
+
+    To limit context, disable globally and enable per agent:
+
+    ```json
+    {
+      "mcp": { "jetic": { "type": "local", "command": ["jetic", "mcp"], "enabled": true } },
+      "tools": { "jetic_*": false },
+      "agent": { "build": { "tools": { "jetic_*": true } } }
+    }
+    ```
+  </Tab>
+  <Tab value="Claude Code">
+    Use the Claude Code CLI:
+
+    ```bash
+    claude mcp add jetic --env JETIC_PROJECT_PATH=C:/path/to/my-api -- node C:/Users/you/Jetic/packages/mcp-server/dist/index.js
+
+    # or via the CLI wrapper
+    claude mcp add jetic -- jetic mcp --project C:/path/to/my-api
+
+    claude mcp list   # verify
+    ```
+  </Tab>
+  <Tab value="Cursor">
+    `.cursor/mcp.json` in the workspace root (or global `~/.cursor/mcp.json`):
+
+    ```json
+    {
+      "mcpServers": {
+        "jetic": {
+          "command": "node",
+          "args": ["C:/Users/you/Jetic/packages/mcp-server/dist/index.js"],
+          "env": { "JETIC_PROJECT_PATH": "${workspaceFolder}" }
+        }
+      }
+    }
+    ```
+
+    Open Cursor Settings → MCP → enable **jetic**. Destructive tools are annotated `destructiveHint: true`, so Cursor can gate them behind approval.
+  </Tab>
+  <Tab value="Antigravity">
+    Google Antigravity uses `mcpServers` (plural) with `command` + `args` + `env`. **Absolute paths are required** — no `${workspaceFolder}` variables.
+
+    - Global (Windows): `%USERPROFILE%\.gemini\antigravity\mcp_config.json`
+    - Workspace: `<project>/.agents/mcp_config.json`
+
+    ```json
+    {
+      "mcpServers": {
+        "jetic": {
+          "command": "node",
+          "args": ["C:/Users/you/Jetic/packages/mcp-server/dist/index.js"],
+          "env": { "JETIC_PROJECT_PATH": "C:/path/to/my-api" }
+        }
+      }
+    }
+    ```
+
+    Agent panel `…` → **MCP Servers** → **Manage MCP Servers** → **View raw config** → paste → save → **Refresh**.
+  </Tab>
+  <Tab value="Claude Desktop">
+    `%APPDATA%\Claude\claude_desktop_config.json` (Windows) or `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
+
+    ```json
+    {
+      "mcpServers": {
+        "jetic": {
+          "command": "node",
+          "args": ["C:/Users/you/Jetic/packages/mcp-server/dist/index.js"],
+          "env": { "JETIC_PROJECT_PATH": "C:/path/to/my-api" }
+        }
+      }
+    }
+    ```
+  </Tab>
+  <Tab value="Windsurf / VS Code">
+    Windsurf (`~/.codeium/windsurf/mcp_config.json`) and VS Code (`.vscode/mcp.json` with `"type": "stdio"`) share the same shape:
+
+    ```json
+    {
+      "mcpServers": {
+        "jetic": {
+          "command": "node",
+          "args": ["C:/Users/you/Jetic/packages/mcp-server/dist/index.js"],
+          "env": { "JETIC_PROJECT_PATH": "C:/path/to/my-api" }
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Onboarding prompts
+
+Paste these into your editor's agent chat, in order.
+
+1. **Meet Jetic** (first message)
+   > I've installed the Jetic MCP tools. Summarize what you can do with them, then read my project's model summary and tell me what's in it.
+
+2. **Re-analyse the whole project**
+   > Help me re-analyse the whole project: find ALL API endpoints — routes, controllers, middleware, auth guards, request/response shapes — and add every missing endpoint to `.jetic/model.json` using the jetic tools. Include security, middleware chains, parameters, and response schemas. When done, run `jetic_verify_model` and fix all errors.
+
+3. **Zoom into one area**
+   > Analyse ONLY `src/modules/payments`: add/update all of its endpoints with full detail (middleware, auth, validation constraints), then verify.
+
+4. **Create a workflow**
+   > Create a workflow called "Shopper checkout": register a user with a faker email and capture the credentials, log in and capture the access token, then create an order with the Bearer token expecting 201. Validate it BEFORE saving, save it, and simulate it against `http://localhost:3000`.
+
+5. **Live-test loop**
+   > Test `POST /api/auth/login` against my local server at `http://localhost:4000` with a realistic payload and tell me whether the response matches the model. Then verify the whole model and fix any issues.
+
+Behind the scenes the agent follows the structured order: `jetic_init` → `jetic_scan` (or `jetic_add_endpoint`) → `jetic_verify_model` → `jetic_validate_workflow` → `jetic_create_workflow` → `jetic_simulate_workflow`. If a step fails, paste the error back — validation messages name the exact fix.
+
+## MCP tools
+
+The server advertises machine-readable annotations (`readOnlyHint`, `destructiveHint`, `openWorldHint`) and startup `instructions` that nudge agents through initialize → model → simulate. Tool calls execute **one at a time in arrival order**, so agents may fire parallel calls safely.
+
+| # | Tool | Kind | Purpose |
+| :--- | :--- | :--- | :--- |
+| 1 | `jetic_read_model` | read | Full model or metadata summary (`summaryOnly`) |
+| 2 | `jetic_list_endpoints` | read | Filter by `method` / `tag` / `resource` / `pathContains` |
+| 3 | `jetic_get_endpoint` | read | Full detail of one endpoint by `id` or `method` + `path` |
+| 4 | `jetic_add_endpoint` | write | Add/upsert an endpoint with full fidelity (middleware, security, constraints, pagination, rate limits, ownership, produces/consumes) |
+| 5 | `jetic_update_endpoint` | write | Partial update — same field coverage as add |
+| 6 | `jetic_delete_endpoint` | destructive | Remove by `id` or `method` + `path` |
+| 7 | `jetic_verify_model` | read | Validate duplicates, unbound params, bad status codes, dangling sources, unknown schemes |
+| 8 | `jetic_test_endpoint` | live HTTP | Real request with custom headers/body/query merged over generated data |
+| 9 | `jetic_manage_environment` | write | `list` / `add` / `update` / `delete` environments |
+| 10 | `jetic_list_workflows` | read | Workflows from `.jetic/workflows/` or embedded in the model |
+| 11 | `jetic_simulate_workflow` | live HTTP | End-to-end simulation with memory capture and validation |
+| 12 | `jetic_simulate` | live HTTP | Alias of `jetic_simulate_workflow` |
+| 13 | `jetic_validate_workflow` | read | Dry-run validation: structure, endpoint cross-refs, and full memory data-flow |
+| 14 | `jetic_create_workflow` | write | Save a workflow; refuses to save while validation errors remain |
+| 15 | `jetic_update_workflow` | write | Rename / replace steps / `appendSteps`, validated before writing |
+| 16 | `jetic_delete_workflow` | destructive | Delete a workflow file by slug/name/path |
+| 17 | `jetic_init` | write | Scaffold `.jetic/` for repos without a model |
+| 18 | `jetic_scan` | write | Keyless static AST scan (Express + TypeScript, needs `tsconfig.json`) |
+
+### Session & change tracking
+
+Alongside the core tools:
+
+- `jetic_get_session_phase` — returns the current phase (init → scan → verify → simulate) and the next action, so an agent can self-orient at the start of a session.
+- `jetic_get_changes` — reads `.jetic/changes.json` to re-index only edited files instead of the whole codebase.
+- `jetic_clear_changes` — clears the change log after the model is updated.
+
+## Authoring loop
+
+<Steps>
+  <Step>
+    **Discover** — `jetic_list_endpoints` for exact `method` + `path` values (the validator rejects unknown routes with suggestions).
+  </Step>
+  <Step>
+    **Draft** with memory chaining:
+    - *Producer:* `capture` (response → memory) or `captureInput` (request → memory).
+    - *Consumer:* `inject` headers/bodies, `{{workflow:key}}` templates, `{{faker.*}}` data.
+    - *Human:* `{{human:key}}` pauses for interactive input; the first answer is cached.
+  </Step>
+  <Step>
+    **Dry-run** — `jetic_validate_workflow` with the inline definition; fix every error.
+  </Step>
+  <Step>
+    **Save** — `jetic_create_workflow` (`overwrite: false` by default protects existing files).
+  </Step>
+  <Step>
+    **Execute** — `jetic_simulate_workflow` against a live server; iterate with `jetic_update_workflow`.
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+| Symptom | Cause / Fix |
+| :--- | :--- |
+| No `jetic_` tools in the editor | Wrong `command`/path. Check the editor's MCP log. Use absolute `node` + absolute `dist/index.js`. Rebuild: `pnpm --filter @jetic/mcp-server run build`. |
+| Tools run against the wrong project | Server cwd ≠ your project. Set `JETIC_PROJECT_PATH` (or `projectPath` per call, or `jetic mcp --project …`). |
+| `modelExists: false` | No `.jetic/model.json` found upward from the resolved path. Run `jetic init` + `jetic scan`. |
+| `Invalid JSON in model file …` | A hand edit broke the file. Restore from git or regenerate with `jetic scan`. |
+| `jetic_test_endpoint` / simulate fail with `fetch failed` | The target server isn't running. Start it, or pass `baseUrl` / `envName` for a live environment. Default timeout 15 s (`timeoutMs`, max 120 s). |
+| `EPIPE` / server exits on editor close | Normal — the editor closed the stdio pipe. Restart via the editor's MCP refresh. |
+| Slow completions / context bloat | Jetic adds many tools. Scope `jetic_*` per agent (see the opencode tab). |

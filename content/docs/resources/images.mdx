@@ -1,0 +1,65 @@
+---
+title: Screenshots
+description: A visual tour of Jetic Studio, the CLI, and workflow execution traces.
+icon: Image
+---
+
+A gallery of the Jetic interfaces. Every image below is a live capture of the tooling described throughout these docs.
+
+## The CLI
+
+Running `jetic init` / `jetic scan` from a project root.
+
+![Jetic CLI first run](/docs/cli-init.png)
+
+![Jetic demo](/docs/demo.gif)
+
+## Jetic Studio — Workspace Overview
+
+High-level model metrics, method breakdown and security posture.
+
+![Jetic Studio overview](/docs/overview.jpg)
+
+## Jetic Studio — Behavioral Model
+
+Browse, filter, and search endpoints; add endpoints manually for any stack.
+
+![Jetic Studio behavioral model list](/docs/model-list.jpg)
+
+![Jetic Studio add endpoint](/docs/add-endpoint.jpg)
+
+## Jetic Studio — Endpoint Inspect
+
+AST source viewer, related files, schema explorer and an interactive REST client.
+
+![Jetic Studio endpoint inspect](/docs/endpoint-inspect.jpg)
+
+## Jetic Studio — Simulations
+
+Saved workflow runner with live SSE execution and expandable step detail.
+
+![Jetic Studio simulations](/docs/simulations.jpg)
+
+![Jetic Studio simulation step expanded](/docs/simulations-expandable.jpg)
+
+![Jetic Studio conditional simulation](/docs/conditional-simulation.jpg)
+
+## Jetic Studio — Memory Inspector
+
+Captured tokens, credentials and variables across `workflow` and `global` scopes.
+
+![Jetic Studio memory inspector](/docs/memory.jpg)
+
+## Jetic Studio — Execution Traces
+
+Node-graph visualization of run results, including success and failure states.
+
+![Jetic Studio traces](/docs/traces.jpg)
+
+![Jetic Studio successful trace](/docs/traces-success.jpg)
+
+![Jetic Studio failed trace](/docs/traces-error.jpg)
+
+<Callout title="Screenshots are captured with a live server">
+These views render live data from `.jetic/model.json`, `.jetic/memory.json`, and `.jetic/changes.json`. Start them with `jetic dev` against a running backend.
+</Callout>

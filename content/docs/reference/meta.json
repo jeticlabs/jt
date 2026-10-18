@@ -1,0 +1,6 @@
+{
+  "title": "Reference",
+  "icon": "BookText",
+  "defaultOpen": true,
+  "pages": ["cli-reference", "artifacts"]
+}

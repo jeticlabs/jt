@@ -1,0 +1,47 @@
+---
+title: Roadmap & Vision
+description: What ships today, and where Jetic is heading. Planned items are not yet available.
+icon: Map
+---
+
+<Callout type="warn" title="Read this first">
+Everything **above this line in the sidebar** is implemented and documented against the current release. This page is a *vision* — items below are **not available** in the CLI yet and should not be relied on. They are listed so the direction is clear, not as a feature reference.
+</Callout>
+
+## Available today
+
+- **Static AST scanner** — `ts-morph` analysis of Express + TypeScript with import resolution and nested-router flattening.
+- **Declarative behavioral model** — versioned `.jetic/model.json` with source line references.
+- **Stateful workflow engine** — multi-step execution with `captureInput`, `capture`, and `inject`.
+- **Memory system** — scoped runtime state in `.jetic/memory.json`.
+- **Jetic Studio** — React local web IDE: overview, model explorer, endpoint inspect, simulations, memory, and ReactFlow traces.
+- **Lightweight change scanner** — zero-dependency file watcher writing `.jetic/changes.json`, streamed live via SSE with `jetic_get_changes` / `jetic_clear_changes` MCP integration.
+- **MCP server** — structured tooling for AI IDEs with no AI key required.
+- **Deterministic agents** — `model-watcher` and `workflow-impact`.
+- **Split YAML export** — `jetic model export --yaml`.
+
+## Planned
+
+### State-machine transition testing
+
+Automatic verification of state transitions — e.g. `payment.capture()` is valid when the payment is `authorized` and invalid when `refunded`.
+
+### Security & authorization auditor
+
+Scenario synthesis for common vulnerability classes such as IDOR (Insecure Direct Object Reference) and privilege escalation, with concrete behavioral evidence and trace links.
+
+### Plugin & adapter ecosystem
+
+A public SDK for community scanner adapters beyond Express and Fastify (Next.js, NestJS, Hono, GraphQL, gRPC), plus a network-isolated scanner worker for cloud execution of third-party adapter code.
+
+### Additional runtime commands
+
+A broader command surface is planned, including a generic `jetic run <thing>` execution entry point, a tools runtime (`jetic.tools.ts` / `defineTool`), and dedicated `jetic test` / CI entry points.
+
+### Reports & CI integrations
+
+Structured reports (JSON, HTML, Markdown, SARIF) and GitHub PR flows that scan the diff, identify affected workflows, run them, and investigate failures.
+
+<Callout type="info" title="Feature requests">
+Because the roadmap reflects an evolving design, treat the exact command names and shapes above as indicative rather than final.
+</Callout>

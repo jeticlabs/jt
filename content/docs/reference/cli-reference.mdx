@@ -1,0 +1,256 @@
+---
+title: CLI Reference
+description: Every jetic command, its flags, and real usage examples.
+icon: Terminal
+---
+
+The `jetic` binary is your entry point into the whole runtime. This page documents the commands that ship today.
+
+## At a glance
+
+| Command | Purpose |
+| :--- | :--- |
+| [`jetic init`](#jetic-init) | Scaffold `.jetic/` — no provider or API key needed |
+| [`jetic scan`](#jetic-scan) | Static Express/TypeScript route analysis → `model.json` |
+| [`jetic inspect`](#jetic-inspect) | Print summary metrics or deep-dive one endpoint |
+| [`jetic model`](#jetic-model) | List endpoints or export the model to split YAML |
+| [`jetic adapter`](#jetic-adapter) | List / inspect framework scanner adapters |
+| [`jetic agent`](#jetic-agent) | Run deterministic agents over the model |
+| [`jetic doctor`](#jetic-doctor) | Diagnose setup problems |
+| [`jetic activity`](#jetic-activity) | Activity stream of endpoint add/remove events |
+| [`jetic simulate endpoint`](#jetic-simulate-endpoint) | Test single endpoints against a live server |
+| [`jetic simulate workflow`](#jetic-simulate-workflow) | Execute multi-step stateful workflows |
+| [`jetic dev`](#jetic-dev) | Launch the Jetic Studio dashboard |
+| [`jetic memory`](#jetic-memory) | Inspect and edit runtime memory |
+| [`jetic mcp`](#jetic-mcp) | Start the stdio MCP server for AI IDEs |
+| [`jetic config`](#jetic-config) | Show the resolved project and Jetic directory |
+| [`jetic upgrade`](#jetic-upgrade) | Upgrade Jetic dependencies |
+
+---
+
+## `jetic init`
+
+Initializes a `.jetic/` directory in the current project. No provider or API key setup is required.
+
+```bash
+jetic init
+```
+
+Creates `jetic.config.json` (if absent), the `.jetic/` workspace, and an empty `.jetic/model.json`.
+
+---
+
+## `jetic scan`
+
+Parses backend source code (via `tsconfig.json` and AST resolution), extracts routes, and writes `.jetic/model.json`.
+
+```bash
+jetic scan
+```
+
+It flattens nested Express router chains (e.g. `app.use('/api/orders', ordersRouter)` → `router.post('/checkout')`), records path parameters, recognizable auth middleware, and the exact source file and line for each route.
+
+---
+
+## `jetic inspect`
+
+Displays summary metrics, or deep-inspects a single endpoint.
+
+```bash
+# Project summary: endpoint count, method breakdown, security rules
+jetic inspect
+
+# One endpoint, with source provenance, parameters and response schema
+jetic inspect endpoint GET /api/orders/:id
+```
+
+---
+
+## `jetic model`
+
+Inspects the behavioral model, or exports it to the split YAML layout.
+
+```bash
+# List endpoints (YAML layout if present, otherwise model.json)
+jetic model list
+
+# Export model.json -> api.yaml + paths/*.yaml + security/*.yaml
+jetic model export --yaml
+```
+
+`model.json` remains the primary read/write format for the scanner, MCP server, and Jetic Studio. YAML export is opt-in.
+
+---
+
+## `jetic adapter`
+
+Lists and inspects framework scanner adapters that implement the `@jetic/scanner-sdk` contract.
+
+```bash
+# List registered adapters and whether they are detected in this project
+jetic adapter list
+
+# Show detection result and a scan summary for one adapter
+jetic adapter inspect express
+```
+
+<Callout type="info" title="Available adapters">
+Express is the fully-implemented, first-party adapter. A Fastify adapter exists (ts-morph scan of `instance.get/post/...` call sites) but route-prefix resolution via `fastify.register` is not yet implemented.
+</Callout>
+
+---
+
+## `jetic agent`
+
+Runs deterministic Jetic agents — no LLM involved — that reason over the model, the change log, and workflows. Reports are written to `.jetic/runs/<runId>/agent-report.json`.
+
+```bash
+# List available agents
+jetic agent list
+
+# Detect endpoints added/removed since the last snapshot
+jetic agent run model-watcher
+
+# List workflows affected by recently changed source files
+jetic agent run workflow-impact
+```
+
+---
+
+## `jetic doctor`
+
+Diagnoses common setup problems.
+
+```bash
+jetic doctor
+```
+
+Checks the Node version, `jetic.config.json` presence, adapter detection, model validity, workflow validity, and whether the `jetic dev` port is available.
+
+---
+
+## `jetic activity`
+
+Lists the activity stream of endpoint additions/removals detected by `jetic scan`, written to `.jetic/activity/activity.ndjson`.
+
+```bash
+jetic activity list
+```
+
+---
+
+## `jetic simulate endpoint`
+
+Simulates single endpoints or the entire model against a target environment, using generated data.
+
+```bash
+# Simulate every endpoint in model.json
+jetic simulate endpoint --all
+
+# Simulate one endpoint with detailed response logs
+jetic simulate endpoint POST /api/auth/login --verbose
+
+# Target a specific environment defined in model.json
+jetic simulate endpoint --all --env staging
+```
+
+---
+
+## `jetic simulate workflow`
+
+Executes a saved multi-step workflow with automatic state capture and header injection.
+
+```bash
+# List all saved workflows in .jetic/workflows/
+jetic simulate workflow --list
+
+# Execute an existing workflow file
+jetic simulate workflow --workflow .jetic/workflows/user-onboarding.json
+
+# Clear runtime memory before executing
+jetic simulate workflow --workflow .jetic/workflows/user-onboarding.json --clear-memory
+```
+
+See [Workflows](/docs/guides/workflows) for the full authoring model.
+
+---
+
+## `jetic dev`
+
+Starts the Jetic Studio backend and serves the local web dashboard.
+
+```bash
+# Default port 8787
+jetic dev
+
+# Custom port
+jetic dev --port 9000
+```
+
+---
+
+## `jetic memory`
+
+Views and manages key-value entries stored in `.jetic/memory.json`.
+
+```bash
+# List all stored keys and values across scopes
+jetic memory list
+
+# Get a value (supports scope:key)
+jetic memory get workflow:accessToken
+
+# Set a value
+jetic memory set workflow:accessToken "eyJhbGciOi..."
+
+# Delete a key
+jetic memory delete workflow:accessToken
+
+# Clear all entries
+jetic memory clear
+```
+
+---
+
+## `jetic mcp`
+
+Launches the Jetic MCP server over stdio, giving your editor's AI assistant typed tools to inspect, author, validate, and live-test endpoints and workflows. No AI key is needed — the editor's own model is used.
+
+```bash
+# Launch over stdio (uses the current directory as the project root)
+jetic mcp
+
+# Pin to a project explicitly (same as the JETIC_PROJECT_PATH env var)
+jetic mcp --project C:/path/to/your-backend
+```
+
+See [AI IDE Integration](/docs/guides/ai-ide-mcp) for per-editor configuration.
+
+---
+
+## `jetic config`
+
+Displays the current project root and Jetic directory. Provider and API-key configuration is not supported.
+
+```bash
+jetic config list
+```
+
+---
+
+## `jetic upgrade`
+
+Checks for updates and upgrades Jetic dependencies across the workspace.
+
+```bash
+jetic upgrade
+```
+
+---
+
+## Environment variables
+
+| Variable | Used by | Description |
+| :--- | :--- | :--- |
+| `JETIC_PROJECT_PATH` | `jetic mcp` | Pin the MCP server to a project root |
+| `JETIC_HUMAN_<KEY>` | Workflow runtime | Skip an interactive `{{human:key}}` prompt in CI |

@@ -1,6 +1,43 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
+type ButtonVariant = "primary" | "secondary" | "outline" | "ghost";
+type ButtonSize = "sm" | "md" | "icon" | "icon-sm" | "icon-xs";
+
+const buttonBase =
+  "inline-flex items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fd-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4";
+
+const buttonVariantsMap: Record<ButtonVariant, string> = {
+  primary: "bg-fd-primary text-fd-primary-foreground hover:bg-fd-primary/90",
+  secondary:
+    "border bg-fd-secondary text-fd-secondary-foreground hover:bg-fd-accent hover:text-fd-accent-foreground",
+  outline:
+    "border bg-fd-background text-fd-foreground hover:bg-fd-accent hover:text-fd-accent-foreground",
+  ghost:
+    "text-fd-muted-foreground hover:bg-fd-accent hover:text-fd-accent-foreground",
+};
+
+const buttonSizesMap: Record<ButtonSize, string> = {
+  sm: "h-8 px-3 text-sm",
+  md: "h-9 px-3.5 text-sm",
+  icon: "size-9 p-0",
+  "icon-sm": "size-8 p-0",
+  "icon-xs": "size-6 p-0",
+};
+
+/** Class-only variants, for buttons that need their own element. */
+export function buttonVariants({
+  variant = "secondary",
+  size = "md",
+  className,
+}: {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  className?: string;
+} = {}) {
+  return cn(buttonBase, buttonVariantsMap[variant], buttonSizesMap[size], className);
+}
+
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "ghost";
   size?: "sm" | "md";

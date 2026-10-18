@@ -1,0 +1,201 @@
+---
+title: Artifacts & Schemas
+description: Reference for every file Jetic reads and writes inside .jetic/.
+icon: FileCode
+---
+
+Jetic keeps a small, predictable set of files in your project. Source-oriented files are Git-native; generated state is disposable.
+
+| File | Kind | Written by |
+| :--- | :--- | :--- |
+| [`.jetic/model.json`](#modeljson) | Source (Git-native) | `jetic scan`, MCP tools |
+| [`.jetic/workflows/*.json`](#workflows) | Source (Git-native) | `jetic_create_workflow`, hand edits |
+| [`.jetic/memory.json`](#memoryjson) | Generated state | Simulation runtime |
+| [`.jetic/changes.json`](#changesjson) | Generated state | `jetic dev` file watcher |
+| `.jetic/runs/<runId>/agent-report.json` | Generated report | `jetic agent run` |
+
+## `.jetic/model.json`
+
+The **Behavioral Model** — a versioned, strongly-typed graph of what your API exposes, including source provenance (file + line).
+
+```json
+{
+  "version": "0.3",
+  "generatedAt": "2026-08-30T10:00:00.000Z",
+  "project": {
+    "name": "express-shop",
+    "language": "typescript",
+    "framework": "express"
+  },
+  "environments": [
+    { "name": "local", "baseUrl": "http://localhost:3000" }
+  ],
+  "securitySchemes": {
+    "bearerAuth": {
+      "type": "http",
+      "scheme": "bearer",
+      "obtainedFrom": {
+        "endpoint": "POST /api/auth/login",
+        "field": "data.accessToken"
+      }
+    }
+  },
+  "endpoints": [
+    {
+      "id": "post-api-auth-login",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "handlerName": "AuthController.login",
+      "source": { "file": "src/routes/auth.routes.ts", "line": 14 },
+      "requestBody": {
+        "contentType": "application/json",
+        "fields": {
+          "email": { "type": "string", "format": "email", "required": true },
+          "password": { "type": "string", "minLength": 8, "required": true }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Login successful",
+          "schema": {
+            "data.accessToken": "string",
+            "data.user.id": "string"
+          }
+        }
+      },
+      "middleware": []
+    }
+  ]
+}
+```
+
+An endpoint can express far more than the example above — middleware chains in execution order, security requirements, parameters with bounds, business-rule constraints, pagination, rate limits, ownership checks, and memory producers/consumers:
+
+```json
+{
+  "method": "GET",
+  "path": "/api/orders",
+  "name": "List Orders",
+  "handlerName": "OrderController.list",
+  "security": [{ "scheme": "bearerAuth" }],
+  "middleware": [
+    { "name": "cors", "type": "cors" },
+    { "name": "express.json", "type": "parser" },
+    { "name": "auth", "type": "auth", "scheme": "bearerAuth" },
+    { "name": "rateLimit", "type": "rate-limit", "config": { "windowMs": 60000, "max": 100 } }
+  ],
+  "parameters": [
+    { "name": "page", "in": "query", "type": "number", "min": 1, "default": 1 },
+    { "name": "limit", "in": "query", "type": "number", "min": 1, "max": 100, "default": 20 }
+  ],
+  "responses": { "200": { "description": "ok", "schema": { "data": "array", "meta.total": "number" } } },
+  "pagination": { "type": "page", "pageParam": "page", "limitParam": "limit", "totalPath": "meta.total" },
+  "rateLimit": { "windowMs": 60000, "max": 100, "scope": "user" },
+  "ownership": { "ownerField": "userId", "mustMatchAuthClaim": "sub" },
+  "produces": [{ "variable": "lastOrderId", "responseField": "data.0.id" }],
+  "consumes": [{ "variable": "accessToken", "usedAs": "header:Authorization", "producedBy": "POST /api/auth/login" }]
+}
+```
+
+## Workflows
+
+Saved multi-step journeys in `.jetic/workflows/`. See [Workflows](/docs/guides/workflows) for the full authoring guide.
+
+```json
+{
+  "name": "Admin creates workspace, creates class and logs out",
+  "generatedAt": "2026-08-30T10:15:00.000Z",
+  "steps": [
+    {
+      "name": "Admin setup workspace",
+      "method": "POST",
+      "path": "/api/workspaces/setup",
+      "body": {
+        "workspace_name": "{{faker.company.name}}",
+        "admin_email": "{{faker.internet.email}}",
+        "admin_password": "{{faker.internet.password}}"
+      },
+      "captureInput": {
+        "workflow:adminEmail": "admin_email",
+        "workflow:adminPassword": "admin_password"
+      },
+      "capture": { "workflow:workspaceID": "data.workspace.id" },
+      "expectStatus": 201
+    },
+    {
+      "name": "Admin login",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "body": {
+        "user_email": "{{workflow:adminEmail}}",
+        "user_password": "{{workflow:adminPassword}}"
+      },
+      "capture": { "workflow:accessToken": "data.accessToken" },
+      "expectStatus": 200
+    },
+    {
+      "name": "Create class",
+      "method": "POST",
+      "path": "/api/classes",
+      "inject": { "header:Authorization": "Bearer {{workflow:accessToken}}" },
+      "expectStatus": 201
+    }
+  ]
+}
+```
+
+## `.jetic/memory.json`
+
+Scoped runtime key-value state, written during simulation and used for template resolution.
+
+```json
+{
+  "workflow": {
+    "adminEmail": "admin_test_8421@example.com",
+    "adminPassword": "Password123!",
+    "workspaceID": "ws_98124712",
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  },
+  "global": {
+    "baseUrl": "http://localhost:3000"
+  }
+}
+```
+
+<Callout type="warn" title="Secrets live here">
+`memory.json` holds real tokens and credentials captured during a run. Keep it out of version control and treat it as generated state.
+</Callout>
+
+## `.jetic/changes.json`
+
+The change log written by the `jetic dev` file watcher. AI assistants read it via `jetic_get_changes` to re-index only modified files.
+
+```json
+{
+  "version": 1,
+  "watchedSince": "2026-09-18T10:00:00.000Z",
+  "projectRoot": "C:/projects/my-express-api",
+  "changes": [
+    {
+      "filePath": "src/routes/user.routes.ts",
+      "absolutePath": "C:/projects/my-express-api/src/routes/user.routes.ts",
+      "changedAt": "2026-09-18T14:20:00.000Z",
+      "eventType": "change"
+    }
+  ]
+}
+```
+
+## `.jetic/runs/<runId>/agent-report.json`
+
+Written by `jetic agent run <id>`. Reports contain the agent's deterministic findings — for example the endpoints added or removed since the last snapshot (`model-watcher`) or the workflows affected by recent changes (`workflow-impact`).
+
+## Recommended `.gitignore`
+
+```bash
+# Recommended .gitignore — generated state is disposable
+.jetic/memory.json
+.jetic/changes.json
+.jetic/runs/
+.jetic/activity/
+```

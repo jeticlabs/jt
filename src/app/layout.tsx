@@ -5,6 +5,7 @@ import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { env } from "@/lib/env";
 import { inter, walsheim } from "./fonts";
+import { RootProvider } from 'fumadocs-ui/provider/next';
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -124,7 +125,9 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         <ThemeProvider>
-          <QueryProvider>{children}</QueryProvider>
+          <QueryProvider>
+            <RootProvider>{children}</RootProvider>
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>
