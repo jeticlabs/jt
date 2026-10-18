@@ -34,7 +34,7 @@ const COLUMNS: Column[] = [
     sections: [
       {
         links: [
-          l("Documentation", "/docs"),
+          l("CLI Documentation", "/docs"),
           l("Quickstart", "/docs/quickstart"),
           l("Install Jetic CLI", "/docs/install"),
           l("MCP Integration", "/docs/mcp"),
@@ -53,28 +53,28 @@ const COLUMNS: Column[] = [
       {
         heading: "API clients",
         links: [
-          l("Jetic vs Postman", "/compare/postman"),
-          l("Jetic vs Insomnia", "/compare/insomnia"),
-          l("Jetic vs Bruno", "/compare/bruno"),
-          l("Jetic vs Hoppscotch", "/compare/hoppscotch"),
-          l("Jetic vs Yaak", "/compare/yaak"),
+          l("Jetic CLI vs Postman", "/compare/postman"),
+          l("Jetic CLI vs Insomnia", "/compare/insomnia"),
+          l("Jetic CLI vs Bruno", "/compare/bruno"),
+          l("Jetic CLI vs Hoppscotch", "/compare/hoppscotch"),
+          l("Jetic CLI vs Yaak", "/compare/yaak"),
         ],
       },
       {
         heading: "CLI & agentic tools",
         links: [
-          l("Jetic vs cURL", "/compare/curl"),
-          l("Jetic vs HTTPie", "/compare/httpie"),
-          l("Jetic vs AI coding agents", "/compare/ai-coding-agents"),
-          l("Jetic vs AI-powered API workflows", "/compare/ai-api-workflows"),
+          l("Jetic CLI vs cURL", "/compare/curl"),
+          l("Jetic CLI vs HTTPie", "/compare/httpie"),
+          l("Jetic CLI vs AI coding agents", "/compare/ai-coding-agents"),
+          l("Jetic CLI vs AI-powered API workflows", "/compare/ai-api-workflows"),
         ],
       },
       {
         heading: "Testing & simulation",
         links: [
-          l("Jetic vs ReadyAPI", "/compare/readyapi"),
-          l("Jetic vs Karate", "/compare/karate"),
-          l("Jetic vs REST Assured", "/compare/rest-assured"),
+          l("Jetic CLI vs ReadyAPI", "/compare/readyapi"),
+          l("Jetic CLI vs Karate", "/compare/karate"),
+          l("Jetic CLI vs REST Assured", "/compare/rest-assured"),
           l("View all comparisons →", "/compare"),
         ],
       },
@@ -212,7 +212,7 @@ export default function SiteFooter() {
         {/* bottom bar */}
         <div className="mt-[42px] flex flex-wrap items-center justify-between gap-x-8 gap-y-4 lg:min-h-[32px] lg:flex-nowrap">
           {/* logo */}
-          <a href="/" className="flex items-baseline gap-[6px]" aria-label="Jetic home">
+          <a href="/" className="flex items-baseline gap-[6px]" aria-label="Jetic CLI home">
             <span className="flex items-center gap-1  font-semibold tracking-[-0.03em] text-white">
               <JeticIcon size={12} />
               Jetic
