@@ -1,0 +1,51 @@
+---
+title: Install Jetic CLI
+description: Install jetic-cli globally, run it with npx, or build the monorepo from source.
+icon: Package
+---
+
+The package is published as **`jetic-cli`**. The executable is **`jetic`**.
+
+## Requirements
+
+- **Node.js** `>= 20`
+- **pnpm** `>= 9` only when building from source
+
+## Global install
+
+```bash
+npm install -g jetic-cli
+jetic --help
+```
+
+## Run without installing
+
+```bash
+npx jetic-cli --help
+```
+
+## Build from source
+
+```bash
+git clone https://github.com/jeticlabs/Jetic.git
+cd Jetic
+
+pnpm install
+pnpm build
+
+cd apps/cli
+pnpm link --global
+```
+
+## Verify
+
+```bash
+jetic --help
+jetic doctor
+```
+
+`jetic doctor` checks your Node version, configuration, adapters, and ports.
+
+<Callout title="Full reference">
+See [Installation](/docs/start/installation) for the project requirements, monorepo layout, and package details.
+</Callout>

@@ -1,0 +1,37 @@
+---
+title: SDK & API Reference
+description: Where to find the CLI commands, model artifacts, and MCP tool surface.
+icon: Braces
+---
+
+Jetic is used through a CLI, a local Studio, and an MCP server. This page points to the reference material for each surface.
+
+## CLI
+
+The full command list, flags, and examples:
+
+- `jetic init` and `jetic scan`
+- `jetic inspect` and `jetic model`
+- `jetic simulate endpoint` and `jetic simulate workflow`
+- `jetic dev`, `jetic memory`, `jetic mcp`, and `jetic doctor`
+
+See the [CLI Reference](/docs/reference/cli-reference).
+
+## Artifacts
+
+The on-disk formats:
+
+- `.jetic/model.json` and the optional split YAML export
+- `.jetic/workflows/*.json`
+- `.jetic/memory.json`
+- `.jetic/runs/<runId>/`
+
+See [Artifacts](/docs/reference/artifacts).
+
+## MCP tools
+
+The MCP server exposes session, model, verification, workflow, and run tools to a connected editor. Setup and the tool surface are documented in [MCP Integration](/docs/mcp) and the [AI IDE guide](/docs/guides/ai-ide-mcp).
+
+## Start here
+
+If you are new to Jetic, follow the [Quickstart](/docs/quickstart) first, then return to the reference for field-level details.

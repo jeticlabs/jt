@@ -6,3 +6,6 @@ export { default as PromptBox } from "./prompt-box";
 export { default as FooterLinks } from "./footer-links";
 export { default as SiteFooter } from "./site-footer";
 export { default as PlatformSection } from "./platform-section";
+export { default as PageShell } from "./page-shell";
+export { default as MarketingLanding } from "./marketing-landing";
+export * from "./page-sections";

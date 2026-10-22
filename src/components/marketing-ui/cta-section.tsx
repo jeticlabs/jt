@@ -3,7 +3,7 @@ import Link from "next/link";
 import CrystalizedBall from "../crystallized-ball";
 
 /* edit the copy / links here */
-const COPY = {
+const DEFAULT_COPY = {
   headline: "Keep every",
   headlineItalic: "run.",
   body: "Describe the behavior you want to test. Jetic drafts the requests, assertions, and workflow — you review, approve, and execute against your own environment.",
@@ -11,7 +11,10 @@ const COPY = {
   href: "/sign-up",
 };
 
-export default function CtaSection() {
+type CtaSectionProps = Partial<typeof DEFAULT_COPY>;
+
+export default function CtaSection(props: CtaSectionProps = {}) {
+  const COPY = { ...DEFAULT_COPY, ...props };
   return (
     <section
       id="cta"

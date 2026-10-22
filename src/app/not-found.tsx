@@ -1,8 +1,6 @@
-import { MarketingNavbar } from "@/components/marketing-ui";
 import { inter } from "./fonts";
 import type { CSSProperties } from "react";
 import { JeticAnimatedIcon } from "@/components/jetic-animated-icon";
-import Image from "next/image";
 
 function DotGrid() {
   const cols = 6;

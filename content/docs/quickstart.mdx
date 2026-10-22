@@ -1,0 +1,53 @@
+---
+title: Quickstart
+description: From install to a saved workflow and a trace in four commands.
+icon: Zap
+---
+
+This is the shortest path to a first run. For prerequisites, interface options, and troubleshooting, read the full [Getting Started](/docs/start/getting-started) guide.
+
+## Prerequisites
+
+- **Node.js** `>= 20`
+- An Express + TypeScript project for automatic scanning
+
+## 1. Install
+
+```bash
+npm install -g jetic-cli
+```
+
+The package is `jetic-cli`; the command is `jetic`. See [Installation](/docs/start/installation) for `npx` and building from source.
+
+## 2. Initialize and scan
+
+From the project root:
+
+```bash
+jetic init
+jetic scan
+```
+
+`jetic scan` reads `tsconfig.json`, discovers routes and middleware, and writes `.jetic/model.json`. No AI provider key is needed.
+
+## 3. Create a workflow
+
+Launch Studio and pick a few endpoints, or let an agent scaffold the draft over [MCP](/docs/mcp):
+
+```bash
+jetic dev
+```
+
+The workflow is a JSON file under `.jetic/workflows/`. Add `capture` to a response field and `inject` it into a later step.
+
+## 4. Run it
+
+```bash
+jetic simulate workflow <slug>
+```
+
+A passing run writes a trace under `.jetic/runs/<runId>/`. Open the run to see the request, response, captured values, and timings for every step.
+
+<Callout title="Next">
+Read the [Workflow guide](/docs/guides/workflows) for conditions, retries, and expected failures, or connect an editor through [MCP](/docs/mcp).
+</Callout>

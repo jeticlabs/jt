@@ -1,0 +1,45 @@
+---
+title: MCP Integration
+description: Connect Jetic to an AI editor over the Model Context Protocol with the stdio server.
+icon: Bot
+---
+
+Jetic ships a stdio MCP server that gives an AI assistant typed tools to inspect, author, validate, and test your API model and workflows.
+
+```bash
+jetic mcp
+```
+
+The server uses **your editor's model**. There is no OpenRouter or OpenAI key, and no `jetic config ai` step.
+
+## What the tools cover
+
+| Area | Examples |
+| :--- | :--- |
+| Session | Check the current phase and whether a model exists |
+| Model | Initialize, scan, read, add, and update endpoints |
+| Verification | Validate the model and fill missing fields |
+| Workflows | Scaffold, validate, save, and simulate |
+| Runs | List recent runs and read a full report |
+
+## Project resolution
+
+Every tool accepts an optional `projectPath`. Resolution order:
+
+1. The `projectPath` argument
+2. The `JETIC_PROJECT_PATH` environment variable
+3. The server process working directory, walking up to find `.jetic/model.json`
+
+If no model exists, read tools return `modelExists: false` instead of pretending the model is empty.
+
+## Editor setup
+
+The full setup for opencode, Claude Code, Cursor, Antigravity, Claude Desktop, Windsurf, and VS Code lives in the [AI IDE integration guide](/docs/guides/ai-ide-mcp).
+
+<Callout title="Windows paths">
+Prefer `"command": "node"` with absolute forward-slash paths in `args`. npm shims on Windows may need `cmd /c`.
+</Callout>
+
+## The important boundary
+
+Authoring through an agent is optional and can be probabilistic. **Execution is not.** The saved workflow file is what runs, and it runs without a model in the loop.
