@@ -12,7 +12,7 @@ function required(name: string, fallback?: string): string {
 }
 
 export const env = {
-  jeticApiUrl: required("JETIC_API_URL", "http://localhost:3001"),
+  jeticApiUrl: required("JETIC_API_URL", "http://localhost:4000"),
   appUrl: required("NEXT_PUBLIC_APP_URL", "http://localhost:3000"),
   isProduction: process.env.NODE_ENV === "production",
 } as const;

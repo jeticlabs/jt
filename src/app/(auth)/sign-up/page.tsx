@@ -5,7 +5,7 @@ import Link from "next/link";
 import { JeticIcon } from "@/components/jetic-icon";
 import { useRouter } from "next/navigation";
 import CodeSlots, { type CodeSlotsStatus } from "@/components/code-slot";
-
+import { requestEmailCode, verifyEmailCode } from "@/features/auth/auth.api";
 
 
 const GoogleIcon = () => (
@@ -16,45 +16,56 @@ const GoogleIcon = () => (
 
 type Step = "email" | "code";
 
-// TODO: replace with a real call to your verify endpoint.
-async function verifyCode(code: string): Promise<boolean> {
-  console.log("Verify code:", code);
-  await new Promise((r) => setTimeout(r, 400));
-  return true;
-}
-
 export default function SignUp() {
   const [email, setEmail] = useState<string>("");
   const [step, setStep] = useState<Step>("email");
   const [status, setStatus] = useState<CodeSlotsStatus>("idle");
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const navigate = useRouter();
   const handleGoogle = () => {
     // TODO: hook up Google OAuth
     console.log("Sign up with Google");
   };
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!email.trim()) return;
-    // TODO: create the account + send the one-time code via backend
-    console.log("Sign up with email:", email);
-    setStatus("idle");
-    setStep("code");
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail || isLoading) return;
+
+    setIsLoading(true);
+    setErrorMessage(null);
+    try {
+      await requestEmailCode("sign-up", normalizedEmail);
+      setEmail(normalizedEmail);
+      setStatus("idle");
+      setStep("code");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to send a code.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleComplete = async (code: string) => {
-    const ok = await verifyCode(code);
-    if (!ok) {
+    if (isLoading) return;
+    setIsLoading(true);
+    setErrorMessage(null);
+    try {
+      await verifyEmailCode(email, code);
+      setStatus("success");
+      window.setTimeout(() => navigate.push("/app/onboarding"), 700);
+    } catch (error) {
       setStatus("error");
-      return;
+      setErrorMessage(error instanceof Error ? error.message : "Unable to verify that code.");
+    } finally {
+      setIsLoading(false);
     }
-    setStatus("success");
-    // Let the success animation play before leaving.
-    window.setTimeout(() => navigate.push("/app/onboarding"), 700);
   };
 
   const backToEmail = () => {
     setStatus("idle");
+    setErrorMessage(null);
     setStep("email");
   };
 
@@ -102,18 +113,29 @@ export default function SignUp() {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setErrorMessage(null);
+                }}
                 placeholder="Enter your work email..."
                 autoComplete="email"
+                required
                 className="jetic-input"
               />
               <button
                 type="submit"
                 className="jetic-btn"
+                disabled={isLoading}
               >
-                Continue
+                {isLoading ? "Sending code..." : "Continue"}
               </button>
             </form>
+
+            {errorMessage && (
+              <p role="alert" className="mt-4 text-[14px] text-[#ff3b30]">
+                {errorMessage}
+              </p>
+            )}
 
             <p className="jetic-muted mt-6 text-center text-[14px]">
               Already have an account?{" "}
@@ -127,7 +149,10 @@ export default function SignUp() {
             <CodeSlots
               length={6}
               status={status}
-              onChange={() => setStatus("idle")}
+              onChange={() => {
+                setStatus("idle");
+                setErrorMessage(null);
+              }}
               onComplete={handleComplete}
               accentColor="#f5f5f5"
               inkColor="#f5f5f5"
@@ -143,13 +168,13 @@ export default function SignUp() {
               cascade={20}
               mask={false}
               caret
-              disabled={false}
+              disabled={isLoading}
               autoFocus
             />
 
-            {status === "error" && (
+            {errorMessage && (
               <p role="alert" className="mt-4 text-[14px] text-[#ff3b30]">
-                That code didn&apos;t match — try again.
+                {errorMessage}
               </p>
             )}
             {status === "success" && (
@@ -161,6 +186,7 @@ export default function SignUp() {
             <button
               type="button"
               onClick={backToEmail}
+              disabled={isLoading}
               className="jetic-muted mt-6 text-[14px] font-medium hover:text-white hover:underline"
             >
               Use a different email
