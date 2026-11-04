@@ -4,11 +4,16 @@ interface ApiProblem {
   detail?: string;
 }
 
+const API_BASE_URL = (
+  process.env.NEXT_PUBLIC_JETIC_API_URL || "http://localhost:4000"
+).replace(/\/+$/, "");
+
 async function postAuth<T>(action: AuthAction | "verify-otp", body: object): Promise<T> {
-  const response = await fetch(`/api/auth/${action}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/auth/${action}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    credentials: "include",
   });
   const payload = (await response.json()) as T & ApiProblem;
 
