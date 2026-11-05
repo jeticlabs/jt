@@ -103,7 +103,7 @@ export default function WorkspaceSidebar({
   return (
     <SidebarShell collapsed={collapsed} aria-label="Workspace">
       <div
-        className={`flex h-11 shrink-0 items-center border-b border-white/10 ${
+        className={`hidden  h-11 shrink-0 items-center border-b border-white/10 ${
           collapsed ? "justify-center px-0" : "px-3"
         }`}
       >
@@ -123,7 +123,7 @@ export default function WorkspaceSidebar({
 
       <nav
         aria-label="Workspace"
-        className={`flex-1 overflow-y-auto py-2 [scrollbar-color:#2a2a2a_transparent] [scrollbar-width:thin] ${
+        className={`bg-[#0a0a0a] flex-1 overflow-y-auto py-2 [scrollbar-color:#2a2a2a_transparent] [scrollbar-width:thin] ${
           collapsed ? "px-1.5" : "px-2"
         }`}
       >

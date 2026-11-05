@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useParams, usePathname } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 
 import Sidebar from "@/components/ui/Sidebar/Sidebar";
 import { SidebarShell } from "@/components/ui/Sidebar/sidebar-shell";
@@ -63,11 +63,28 @@ export function WorkspaceChrome({ children }: { children: ReactNode }) {
 
 function ChromeToolbar() {
   const workspaceId = useWorkspaceId();
+  const params = useParams<{ sandboxId?: string | string[] }>();
+  const pathname = usePathname() ?? "";
+  const router = useRouter();
   const { collapsed, toggleSidebar } = useChrome();
+  const sandboxId = Array.isArray(params?.sandboxId)
+    ? params.sandboxId[0] ?? ""
+    : params?.sandboxId ?? "";
+  const isSandboxRoute = /^\/app\/workspace\/[^/]+\/sandbox\/[^/]+(?:\/|$)/.test(pathname);
+  const isAgenticMode = /\/chat(?:\/|$)/.test(pathname);
 
   return (
     <Toolbar
+      key={`${workspaceId}:${sandboxId}`}
       workspace={workspaceId}
+      project={sandboxId}
+      isSandboxRoute={isSandboxRoute}
+      isAgenticMode={isAgenticMode}
+      onModeChange={(mode) => {
+        if (!sandboxId) return;
+        const basePath = `/app/workspace/${encodeURIComponent(workspaceId)}/sandbox/${encodeURIComponent(sandboxId)}`;
+        router.push(mode === "Agentic Mode" ? `${basePath}/chat` : basePath);
+      }}
       sidebarCollapsed={collapsed}
       onToggleSidebar={toggleSidebar}
     />

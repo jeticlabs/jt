@@ -1,10 +1,16 @@
 "use client"
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { Check, ChevronsUpDown, Plus } from "lucide-react";
+import { Check, ChevronsUpDown, Plus, PlusIcon, X } from "lucide-react";
 import { inter } from "@/app/fonts";
 
 type Tab = "Manual" | "Agentic Mode";
+type SettingsSection =
+    | "Profile"
+    | "Devices & sessions"
+    | "Notifications"
+    | "Support"
+    | "Data & privacy";
 
 const TABS: { id: Tab; locked?: boolean }[] = [
     { id: "Manual" },
@@ -12,6 +18,13 @@ const TABS: { id: Tab; locked?: boolean }[] = [
 ];
 
 const MENUS = ["Overview", "Integrations", "Members", "Billing & Usage", "Settings"] as const;
+const SETTINGS_SECTIONS: SettingsSection[] = [
+    "Profile",
+    "Devices & sessions",
+    "Notifications",
+    "Support",
+    "Data & privacy",
+];
 
 /* ---------- Icons (inline, 24x24 stroke icons) ---------- */
 
@@ -201,6 +214,104 @@ function ProductMenus({ className = "" }: { className?: string }) {
     );
 }
 
+function SettingsDialog({
+    open,
+    section,
+    userName,
+    onSectionChange,
+    onClose,
+}: {
+    open: boolean;
+    section: SettingsSection;
+    userName: string;
+    onSectionChange: (section: SettingsSection) => void;
+    onClose: () => void;
+}) {
+    useEffect(() => {
+        if (!open) return;
+        const onKey = (event: KeyboardEvent) => {
+            if (event.key === "Escape") onClose();
+        };
+        document.addEventListener("keydown", onKey);
+        return () => document.removeEventListener("keydown", onKey);
+    }, [open, onClose]);
+
+    if (!open) return null;
+
+    const descriptions: Record<SettingsSection, string> = {
+        Profile: "Manage your personal details and account information.",
+        "Devices & sessions": "Review the devices and active sessions connected to your account.",
+        Notifications: "Choose how you receive account and product updates.",
+        Support: "Find help and contact the Jetic support team.",
+        "Data & privacy": "Manage your data, privacy, and account preferences.",
+    };
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+            onMouseDown={(event) => {
+                if (event.target === event.currentTarget) onClose();
+            }}
+        >
+            <section
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="account-settings-title"
+                className="flex h-[min(620px,calc(100vh-2rem))] w-full max-w-4xl overflow-hidden rounded-2xl border border-white/10 bg-[#111111] text-white shadow-2xl"
+            >
+                <aside className="w-56 shrink-0 border-r border-white/10 bg-[#0c0c0c] p-4 max-sm:w-40 max-sm:p-2">
+                    <p className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-[var(--jetic-muted)]">
+                        Account settings
+                    </p>
+                    <nav aria-label="Settings sections" className="mt-2 space-y-1">
+                        {SETTINGS_SECTIONS.map((item) => (
+                            <button
+                                key={item}
+                                type="button"
+                                aria-current={section === item ? "page" : undefined}
+                                onClick={() => onSectionChange(item)}
+                                className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                                    section === item
+                                        ? "bg-white/10 font-medium text-white"
+                                        : "text-[var(--jetic-muted)] hover:bg-white/5 hover:text-white"
+                                }`}
+                            >
+                                {item}
+                            </button>
+                        ))}
+                    </nav>
+                </aside>
+                <div className="min-w-0 flex-1 overflow-y-auto p-6 max-sm:p-4">
+                    <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-5">
+                        <div>
+                            <h2 id="account-settings-title" className="text-xl font-semibold">
+                                {section}
+                            </h2>
+                            <p className="mt-1 text-sm text-[var(--jetic-muted)]">
+                                {descriptions[section]}
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            aria-label="Close settings"
+                            onClick={onClose}
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--jetic-muted)] hover:bg-white/10 hover:text-white"
+                        >
+                            <X size={16} />
+                        </button>
+                    </div>
+                    {section === "Profile" && (
+                        <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                            <p className="text-sm font-medium">Name</p>
+                            <p className="mt-1 text-sm text-[var(--jetic-muted)]">{userName}</p>
+                        </div>
+                    )}
+                </div>
+            </section>
+        </div>
+    );
+}
+
 /* ---------- Switcher (searchable popover: list + create) ---------- */
 
 interface SwitcherProps {
@@ -312,12 +423,15 @@ interface EditorTopBarProps {
     workspace?: string;
     project?: string;
     userName?: string;
+    isSandboxRoute?: boolean;
+    isAgenticMode?: boolean;
     workspaces?: string[];
     sandboxes?: string[];
     onSelectWorkspace?: (v: string) => void;
     onSelectSandbox?: (v: string) => void;
     onCreateWorkspace?: () => void;
     onCreateSandbox?: () => void;
+    onModeChange?: (tab: Tab) => void;
     /** When true the product sidebar is collapsed; the toggle shows "expand". */
     sidebarCollapsed?: boolean;
     onToggleSidebar?: () => void;
@@ -327,19 +441,43 @@ export default function Toolbar({
     workspace: initialWorkspace = "prutotechnologies",
     project: initialProject = "test-sandbox",
     userName = "Oyewale Prudence",
+    isSandboxRoute = false,
+    isAgenticMode = false,
     workspaces = ["prutotechnologies", "acme", "sandbox-lab"],
     sandboxes = ["test-sandbox", "api-playground", "prod-mirror"],
     onSelectWorkspace,
     onSelectSandbox,
     onCreateWorkspace,
     onCreateSandbox,
+    onModeChange,
     sidebarCollapsed = false,
     onToggleSidebar,
 }: EditorTopBarProps) {
-    const [tab, setTab] = useState<Tab>("Manual");
-    const [gridSize] = useState<string>("0.250 mm");
+    const tab: Tab = isAgenticMode ? "Agentic Mode" : "Manual";
     const [currentWorkspace, setCurrentWorkspace] = useState(initialWorkspace);
     const [currentProject, setCurrentProject] = useState(initialProject);
+    const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+    const [settingsOpen, setSettingsOpen] = useState(false);
+    const [settingsSection, setSettingsSection] = useState<SettingsSection>("Profile");
+    const accountMenuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!accountMenuOpen) return;
+        const onDown = (event: MouseEvent) => {
+            if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
+                setAccountMenuOpen(false);
+            }
+        };
+        const onKey = (event: KeyboardEvent) => {
+            if (event.key === "Escape") setAccountMenuOpen(false);
+        };
+        document.addEventListener("mousedown", onDown);
+        document.addEventListener("keydown", onKey);
+        return () => {
+            document.removeEventListener("mousedown", onDown);
+            document.removeEventListener("keydown", onKey);
+        };
+    }, [accountMenuOpen]);
 
     const pickWorkspace = (v: string) => {
         setCurrentWorkspace(v);
@@ -360,7 +498,7 @@ export default function Toolbar({
 
     return (
         <div className={`${inter.className} text-white antialiased`}>
-            <header className="border-b border-white/10 bg-[var(--jetic-bg)] text-[13px]">
+            <header className="border-b border-white/10 bg-[#0a0a0a] text-[13px]">
                 {/* Row 1 — always visible */}
                 <div className="flex items-center gap-2 px-2 py-1.5 sm:gap-4 sm:px-3">
                     <IconButton
@@ -382,50 +520,100 @@ export default function Toolbar({
                             createLabel="Create new workspace"
                             searchPlaceholder="Search workspaces…"
                         />
-                        <span className="text-[var(--jetic-ring)]">/</span>
-                        <Switcher
-                            label="Switch sandbox"
-                            value={currentProject}
-                            items={sandboxes}
-                            onSelect={pickSandbox}
-                            onCreate={createSandbox}
-                            createLabel="Create new sandbox"
-                            searchPlaceholder="Search sandboxes…"
-                        />
+                        {isSandboxRoute && (
+                            <>
+                                <span className="text-[var(--jetic-ring)]">/</span>
+                                <Switcher
+                                    label="Switch sandbox"
+                                    value={currentProject}
+                                    items={sandboxes}
+                                    onSelect={pickSandbox}
+                                    onCreate={createSandbox}
+                                    createLabel="Create new sandbox"
+                                    searchPlaceholder="Search sandboxes…"
+                                />
+                            </>
+                        )}
                     </nav>
 
                     {/* Center tabs — roomy screens */}
-                    <div className="flex-1 hidden justify-center lg:flex" ><ViewTabs tab={tab} onTabChange={setTab} className="hidden flex w-fit justify-center lg:flex" />
-                    </div>
+                    {isSandboxRoute && (
+                        <div className="flex-1 visible justify-center lg:flex">
+                            <ViewTabs tab={tab} onTabChange={(value) => onModeChange?.(value)} className="hidden flex w-fit justify-center lg:flex" />
+                        </div>
+                    )}
                     {/* Inline menus — wide screens */}
                    
 
-                    <div className="flex shrink-0 items-center gap-2">
-                        <IconButton label="Toggle properties panel">
-                            <PanelRight />
-                        </IconButton>
+                    <div className={`flex shrink-0 items-center gap-2 ${!isSandboxRoute ? "ml-auto" : ""}`}>
+                        {!isSandboxRoute && (
+                            <button
+                                type="button"
+                                onClick={createSandbox}
+                                className="flex h-8 items-center gap-1.5 rounded-lg bg-white px-3 text-[13px] font-medium text-black transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                            >
+                                <PlusIcon className="h-4 w-4" />
+                                <span className="hidden sm:inline">New Sandbox</span>
+                            </button>
+                        )}
 
-                        <button
-                            type="button"
-                            className="flex h-7 items-center gap-2 rounded-full border border-white/10 pl-1 pr-2 transition-colors hover:bg-[var(--jetic-well)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
-                        >
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[11px] font-semibold text-black">
-                                {userName.charAt(0).toUpperCase()}
-                            </span>
-                            <span className="hidden max-w-[120px] truncate text-[var(--jetic-emphasis)] sm:inline">{userName}</span>
-                            <span className="text-[var(--jetic-muted)]">
-                                <ChevronDown />
-                            </span>
-                        </button>
+                        <div ref={accountMenuRef} className="relative">
+                            <button
+                                type="button"
+                                aria-haspopup="menu"
+                                aria-expanded={accountMenuOpen}
+                                onClick={() => setAccountMenuOpen((open) => !open)}
+                                className="flex h-7 items-center gap-2 rounded-full border border-white/10 pl-1 pr-2 transition-colors hover:bg-[var(--jetic-well)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                            >
+                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[11px] font-semibold text-black">
+                                    {userName.charAt(0).toUpperCase()}
+                                </span>
+                                <span className="hidden max-w-[120px] truncate text-[var(--jetic-emphasis)] sm:inline">{userName}</span>
+                                <span className="text-[var(--jetic-muted)]">
+                                    <ChevronDown />
+                                </span>
+                            </button>
+                            {accountMenuOpen && (
+                                <div
+                                    role="menu"
+                                    className="jetic-menu absolute right-0 top-[calc(100%+8px)] z-40 w-48 p-1"
+                                >
+                                    {(["Profile", "Settings"] as const).map((item) => (
+                                        <button
+                                            key={item}
+                                            type="button"
+                                            role="menuitem"
+                                            onClick={() => {
+                                                if (item === "Profile") setSettingsSection("Profile");
+                                                setSettingsOpen(true);
+                                                setAccountMenuOpen(false);
+                                            }}
+                                            className="jetic-menu-item"
+                                        >
+                                            {item}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
                 {/* Row 2 — scrollable overflow strip for smaller screens */}
                 <div className="flex items-center gap-2 overflow-x-auto border-t border-white/10 px-2 py-1.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:hidden">
-                    <ViewTabs tab={tab} onTabChange={setTab} className="flex lg:hidden" />
+                    {isSandboxRoute && (
+                        <ViewTabs tab={tab} onTabChange={(value) => onModeChange?.(value)} className="flex lg:hidden" />
+                    )}
                     <ProductMenus className="flex shrink-0 items-center gap-1" />
                 </div>
             </header>
+            <SettingsDialog
+                open={settingsOpen}
+                section={settingsSection}
+                userName={userName}
+                onSectionChange={setSettingsSection}
+                onClose={() => setSettingsOpen(false)}
+            />
         </div>
     );
 }

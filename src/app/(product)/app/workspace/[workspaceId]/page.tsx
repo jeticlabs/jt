@@ -1,5 +1,6 @@
 "use client";
 
+import { CpuAi } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 /* ------------------------------- Icons ---------------------------------- */
@@ -243,8 +244,8 @@ type Project = {
 };
 
 const projects: Project[] = [
-  { name: "jt", domain: "jt-lime.jetic.app", commit: "feat: wrong api link in production", repo: "jeticlabs/jt", date: "21h ago", icon: "jt" },
-  { name: "jetic", domain: "cli.jetic.space", commit: "feat: wrong api link in production", repo: "jeticlabs/jt", date: "21h ago", icon: "jt" },
+  { name: "jt", domain: "jt-lime.jetic.app", commit: "feat: add strict api rules to api endpoints", repo: "jeticlabs/jt", date: "21h ago", icon: "cube" },
+  /*{ name: "jetic", domain: "cli.jetic.space", commit: "feat: wrong api link in production", repo: "jeticlabs/jt", date: "21h ago", icon: "jt" },
   { name: "learnwithuncletee", domain: "learnwithuncletee.jetic.app", commit: "Corrected adress in studentidcard.tsx component", repo: "ProdevappOFFICIAL/Learnwithuncletee", date: "Oct 31", icon: "vite" },
   { name: "learning-deck", domain: "www.learningdeck.online", commit: "feat/aded-results-to-teacher-navitems", repo: "LearningDeck-HQ/LearningDeck", date: "Oct 31", icon: "triangle" },
   { name: "lab-stx-ide", domain: "ide.labstx.online", commit: "v1.2.2 Live in Production", repo: "LabSTX/LabSTX_IDE", date: "Aug 19", icon: "cube" },
@@ -254,14 +255,14 @@ const projects: Project[] = [
   { name: "stacks-mart", domain: "stacks-mart-murex.jetic.app", commit: "Fixed the explorer link", repo: "ProdevappOFFICIAL/StacksMart", date: "Jul 25", icon: "triangle" },
   { name: "stacks-mart-54qe", domain: "stacks-mart-54qe.jetic.app", commit: "Fixed the explorer link", repo: "ProdevappOFFICIAL/StacksMart", date: "Jul 25", icon: "triangle" },
   { name: "storesolly", domain: "storesolly.jetic.app", commit: "Basic MVP", repo: "Storesoly/Frontend", date: "May 23", icon: "next" },
-  { name: "learning-deck-website-vm49", domain: "learning-deck-website-vm49.jetic.app", commit: "update", repo: "ProdevappOFFICIAL/LearningDeck_Website", date: "6/26/25", icon: "next", status: "activity" },
+  { name: "learning-deck-website-vm49", domain: "learning-deck-website-vm49.jetic.app", commit: "update", repo: "ProdevappOFFICIAL/LearningDeck_Website", date: "6/26/25", icon: "next", status: "activity" },*/
 ];
 
 const usage = [
   { label: "Fluid Active CPU", value: "26m 24s / 4h", fraction: 0.11 },
   { label: "CDN Requests", value: "76K / 1M", fraction: 0.076 },
   { label: "ISR Reads", value: "75K / 1M", fraction: 0.075 },
-  { label: "Fast Origin Transfer", value: "701.07 MB / 10 GB", fraction: 0.07 },
+
   { label: "Edge Requests", value: "112K / 1M", fraction: 0.112 },
   { label: "Function Invocations", value: "18K / 1M", fraction: 0.018 },
 ];
@@ -431,7 +432,7 @@ export default function DashboardPage() {
             <section>
               <SectionTitle>Usage</SectionTitle>
               <Panel className="relative p-3 pb-4">
-                <div className="mb-3 flex items-center justify-between">
+                <div className="mb-3 flex items-center justify-between z-0">
                   <span className="text-[13px] font-medium">Last 30 days</span>
                   <button
                     type="button"
@@ -441,7 +442,7 @@ export default function DashboardPage() {
                   </button>
                 </div>
                 <ul
-                  className={`flex flex-col gap-1 overflow-hidden ${
+                  className={`flex flex-col gap-1 overflow-hidden  z-0 ${
                     usageOpen ? "" : "max-h-[128px]"
                   }`}
                 >
@@ -466,7 +467,7 @@ export default function DashboardPage() {
                   aria-label={usageOpen ? "Show less usage" : "Show more usage"}
                   aria-expanded={usageOpen}
                   onClick={() => setUsageOpen((v) => !v)}
-                  className="absolute -bottom-3 left-1/2 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border border-white/15 bg-[var(--jetic-recess)] text-[var(--jetic-muted)] transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                  className={` ${primaryControl} absolute -bottom-4 z-10 left-1/2 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border-2 border-white/15 bg-[var(--jetic-recess)] text-[var(--jetic-muted)] transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30`}
                 >
                   {usageOpen ? <ChevronUp /> : <ChevronDown />}
                 </button>
@@ -510,7 +511,7 @@ export default function DashboardPage() {
 
           {/* Projects */}
           <section className="min-w-0 flex-1">
-            <SectionTitle>Projects</SectionTitle>
+            <SectionTitle>Sandbox</SectionTitle>
 
             <div
               className={`grid gap-3 ${
@@ -549,6 +550,8 @@ export default function DashboardPage() {
               {filtered.map((p) => (
                 <ProjectCard key={p.name} p={p} />
               ))}
+
+             
             </div>
 
             {filtered.length === 0 && (

@@ -260,7 +260,7 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
             {/* Nav */}
             <nav
                 aria-label="Main"
-                className={`flex-1 overflow-y-auto pb-4 [scrollbar-color:#2a2a2a_transparent] [scrollbar-width:thin] ${
+                className={`flex-1 overflow-y-auto pb-4 [scrollbar-color:#2a2a2a_transparent] [scrollbar-width:thin]  ${
                     collapsed ? "px-1.5 pt-2" : "px-2"
                 }`}
             >

@@ -30,7 +30,7 @@ export function SidebarShell({
       aria-label={rest["aria-label"]}
       data-collapsed={collapsed}
       style={{ width: collapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH }}
-      className={`flex h-full shrink-0 flex-col overflow-hidden border-r border-white/10 bg-[var(--jetic-bg)] text-white antialiased transition-[width] duration-200 ease-out motion-reduce:transition-none ${className}`}
+      className={`flex h-full shrink-0 flex-col overflow-hidden border-r border-white/10 bg-[var(--jetic-well)] text-white antialiased transition-[width] duration-200 ease-out motion-reduce:transition-none ${className}`}
     >
       {children}
     </aside>
