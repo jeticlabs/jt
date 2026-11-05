@@ -12,6 +12,14 @@ export const ROUTES = {
   app: "/app",
   dashboard: "/app/dashboard",
   onboarding: "/app/onboarding",
-  workspace: (workspaceId: string) => `/app/workspaces/${workspaceId}`,
+  workspace: (workspaceId: string) => `/app/workspace/${workspaceId}`,
+  workspaceIntegrations: (workspaceId: string) =>
+    `/app/workspace/${workspaceId}/integrations`,
+  workspaceMembers: (workspaceId: string) =>
+    `/app/workspace/${workspaceId}/members`,
+  workspaceBilling: (workspaceId: string) =>
+    `/app/workspace/${workspaceId}/billing`,
+  workspaceSettings: (workspaceId: string) =>
+    `/app/workspace/${workspaceId}/settings`,
 } as const;
 

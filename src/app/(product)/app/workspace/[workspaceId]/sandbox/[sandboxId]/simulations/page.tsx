@@ -28,7 +28,7 @@ async function Simulations({
         `features/simulation`.
       </p>
       <Link
-        href={`/app/workspaces/${workspaceId}/simulations/demo-simulation`}
+        href={`/app/workspace/${workspaceId}/simulations/demo-simulation`}
         className="w-fit rounded-full border border-black/[.08] px-4 py-2 text-sm dark:border-white/[.12]"
       >
         Open demo simulation →

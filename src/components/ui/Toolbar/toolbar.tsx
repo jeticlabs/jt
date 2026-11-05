@@ -129,8 +129,8 @@ const IconButton = ({ label, children, bordered, disabled, onClick }: IconButton
         onClick={onClick}
         className={`flex h-7 w-8 items-center justify-center rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${bordered ? "border border-white/10" : ""
             } ${disabled
-                ? "cursor-not-allowed text-[#555555]"
-                : "text-[#8a8a8a] hover:bg-[#1e1e1e] hover:text-white"
+                ? "cursor-not-allowed text-[var(--jetic-faint)]"
+                : "text-[var(--jetic-muted)] hover:bg-[var(--jetic-well)] hover:text-white"
             }`}
     >
         {children}
@@ -152,7 +152,7 @@ function ViewTabs({
         <div
             role="tablist"
             aria-label="Editor view"
-            className={`shrink-0 items-center gap-0.5 rounded-full border border-white/10 bg-[#1a1a1a] p-[3px] ${className}`}
+            className={`shrink-0 items-center gap-0.5 rounded-full border border-white/10 bg-[var(--jetic-recess)] p-[3px] ${className}`}
         >
             {TABS.map(({ id, locked }) => {
                 const active = tab === id;
@@ -167,13 +167,13 @@ function ViewTabs({
                         className={`flex h-[26px] items-center gap-1.5 rounded-full px-3.5 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${active
                             ? "bg-white font-medium text-black"
                             : locked
-                                ? "cursor-not-allowed text-[#555555]"
-                                : "text-[#8a8a8a] hover:text-white"
+                                ? "cursor-not-allowed text-[var(--jetic-faint)]"
+                                : "text-[var(--jetic-muted)] hover:text-white"
                             }`}
                     >
                         {id}
                         {locked && (
-                            <span className="flex items-center gap-1 text-[#555555]">
+                            <span className="flex items-center gap-1 text-[var(--jetic-faint)]">
                                 <Lock />
                                 Paid
                             </span>
@@ -192,7 +192,7 @@ function ProductMenus({ className = "" }: { className?: string }) {
                 <button
                     key={m}
                     type="button"
-                    className="whitespace-nowrap rounded-xl px-2 py-1 text-[#ededed] transition-colors hover:bg-[#1e1e1e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                    className="whitespace-nowrap rounded-xl px-2 py-1 text-[var(--jetic-emphasis)] transition-colors hover:bg-[var(--jetic-well)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
                 >
                     {m}
                 </button>
@@ -248,10 +248,10 @@ function Switcher({ label, value, items, onSelect, onCreate, createLabel, search
                     setQuery("");
                     setOpen((o) => !o);
                 }}
-                className="flex items-center gap-1 rounded-lg px-1 py-0.5 font-semibold text-white transition-colors hover:bg-[#1e1e1e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                className="flex items-center gap-1 rounded-lg px-1 py-0.5 font-semibold text-white transition-colors hover:bg-[var(--jetic-well)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
             >
                 <span className="max-w-[80px] truncate sm:max-w-[140px]">{value}</span>
-                <ChevronsUpDown size={14} className="shrink-0 text-[#8a8a8a]" />
+                <ChevronsUpDown size={14} className="shrink-0 text-[var(--jetic-muted)]" />
             </button>
 
             {open && (
@@ -263,7 +263,7 @@ function Switcher({ label, value, items, onSelect, onCreate, createLabel, search
                         placeholder={searchPlaceholder}
                         autoFocus
                         aria-label={searchPlaceholder}
-                        className="h-9 w-full rounded-xl bg-[#1e1e1e] px-3 text-[13px] text-white placeholder:text-[#8a8a8a] focus:outline-none focus:ring-2 focus:ring-white/20"
+                        className="h-9 w-full rounded-xl bg-[var(--jetic-well)] px-3 text-[13px] text-white placeholder:text-[var(--jetic-muted)] focus:outline-none focus:ring-2 focus:ring-white/20"
                     />
                     <ul role="listbox" aria-label={label} className="mt-1 max-h-56 overflow-y-auto">
                         {filtered.map((item) => (
@@ -294,7 +294,7 @@ function Switcher({ label, value, items, onSelect, onCreate, createLabel, search
                                 onCreate();
                                 setOpen(false);
                             }}
-                            className="jetic-menu-item font-medium text-[#ededed]"
+                            className="jetic-menu-item font-medium text-[var(--jetic-emphasis)]"
                         >
                             <Plus size={14} className="shrink-0" />
                             {createLabel}
@@ -318,6 +318,9 @@ interface EditorTopBarProps {
     onSelectSandbox?: (v: string) => void;
     onCreateWorkspace?: () => void;
     onCreateSandbox?: () => void;
+    /** When true the product sidebar is collapsed; the toggle shows "expand". */
+    sidebarCollapsed?: boolean;
+    onToggleSidebar?: () => void;
 }
 
 export default function Toolbar({
@@ -330,6 +333,8 @@ export default function Toolbar({
     onSelectSandbox,
     onCreateWorkspace,
     onCreateSandbox,
+    sidebarCollapsed = false,
+    onToggleSidebar,
 }: EditorTopBarProps) {
     const [tab, setTab] = useState<Tab>("Manual");
     const [gridSize] = useState<string>("0.250 mm");
@@ -355,16 +360,19 @@ export default function Toolbar({
 
     return (
         <div className={`${inter.className} text-white antialiased`}>
-            <header className="border-b border-white/10 bg-[#0a0a0a] text-[13px]">
+            <header className="border-b border-white/10 bg-[var(--jetic-bg)] text-[13px]">
                 {/* Row 1 — always visible */}
                 <div className="flex items-center gap-2 px-2 py-1.5 sm:gap-4 sm:px-3">
-                    <IconButton label="Toggle sidebar">
-                        <PanelLeft />
+                    <IconButton
+                        label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                        onClick={onToggleSidebar}
+                    >
+                        {sidebarCollapsed ? <PanelRight /> : <PanelLeft />}
                     </IconButton>
 
                     <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center gap-1.5 whitespace-nowrap xl:flex-none">
-                        <span className="hidden font-semibold text-[#8a8a8a] sm:inline">jetic</span>
-                        <span className="hidden text-[#4a4a4a] sm:inline">/</span>
+                        <span className="hidden font-semibold text-[var(--jetic-muted)] sm:inline">jetic</span>
+                        <span className="hidden text-[var(--jetic-ring)] sm:inline">/</span>
                         <Switcher
                             label="Switch workspace"
                             value={currentWorkspace}
@@ -374,7 +382,7 @@ export default function Toolbar({
                             createLabel="Create new workspace"
                             searchPlaceholder="Search workspaces…"
                         />
-                        <span className="text-[#4a4a4a]">/</span>
+                        <span className="text-[var(--jetic-ring)]">/</span>
                         <Switcher
                             label="Switch sandbox"
                             value={currentProject}
@@ -390,7 +398,7 @@ export default function Toolbar({
                     <div className="flex-1 hidden justify-center lg:flex" ><ViewTabs tab={tab} onTabChange={setTab} className="hidden flex w-fit justify-center lg:flex" />
                     </div>
                     {/* Inline menus — wide screens */}
-                    <ProductMenus className="hidden shrink-0 items-center gap-1 xl:flex" />
+                   
 
                     <div className="flex shrink-0 items-center gap-2">
                         <IconButton label="Toggle properties panel">
@@ -399,13 +407,13 @@ export default function Toolbar({
 
                         <button
                             type="button"
-                            className="flex h-7 items-center gap-2 rounded-full border border-white/10 pl-1 pr-2 transition-colors hover:bg-[#1e1e1e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                            className="flex h-7 items-center gap-2 rounded-full border border-white/10 pl-1 pr-2 transition-colors hover:bg-[var(--jetic-well)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
                         >
                             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[11px] font-semibold text-black">
                                 {userName.charAt(0).toUpperCase()}
                             </span>
-                            <span className="hidden max-w-[120px] truncate text-[#ededed] sm:inline">{userName}</span>
-                            <span className="text-[#8a8a8a]">
+                            <span className="hidden max-w-[120px] truncate text-[var(--jetic-emphasis)] sm:inline">{userName}</span>
+                            <span className="text-[var(--jetic-muted)]">
                                 <ChevronDown />
                             </span>
                         </button>

@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import type { ReactNode } from "react";
+import { SidebarShell } from "./sidebar-shell";
 
 /* ---------- Icons ---------- */
 
@@ -148,6 +149,7 @@ function NavRow({
     label,
     icon,
     active,
+    collapsed = false,
     depth = 0,
     hasChildren,
     open,
@@ -158,6 +160,7 @@ function NavRow({
     label: string;
     icon: ReactNode;
     active: boolean;
+    collapsed?: boolean;
     depth?: number;
     hasChildren?: boolean;
     open?: boolean;
@@ -173,18 +176,22 @@ function NavRow({
         <li>
             <button
                 type="button"
+                title={collapsed ? label : undefined}
                 aria-current={active ? "page" : undefined}
                 onClick={handleClick}
-                style={{ paddingLeft: depth === 1 ? "2.25rem" : "0.75rem" }}
-                className={`flex h-9 w-full items-center gap-2.5 rounded-lg pr-3 text-left text-[13.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 ${active
-                    ? "bg-[#1a1a1a] font-semibold text-white"
-                    : "font-medium text-[#a1a1a1] hover:bg-[#141414] hover:text-white"
+                style={{
+                    paddingLeft: collapsed ? undefined : depth === 1 ? "2.25rem" : "0.75rem",
+                }}
+                className={`flex h-9 w-full items-center rounded-lg text-left text-[13.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 ${collapsed ? "justify-center px-0" : "gap-2.5 pr-3"
+                    } ${active
+                        ? "bg-[var(--jetic-recess)] font-semibold text-white"
+                        : "font-medium text-[var(--jetic-muted)] hover:bg-[var(--jetic-well)] hover:text-white"
                     }`}
             >
-                <span className={active ? "text-white" : "text-[#666]"}>{icon}</span>
-                <span className="flex-1 truncate">{label}</span>
-                {hasChildren && (
-                    <span className={active || open ? "text-[#888]" : "text-[#555]"}>
+                <span className={active ? "text-white" : "text-[var(--jetic-faint)]"}>{icon}</span>
+                {!collapsed && <span className="flex-1 truncate">{label}</span>}
+                {!collapsed && hasChildren && (
+                    <span className={active || open ? "text-[var(--jetic-muted)]" : "text-[var(--jetic-faint)]"}>
                         <ChevronRight open={!!open} />
                     </span>
                 )}
@@ -195,10 +202,11 @@ function NavRow({
 
 /* ---------- Component ---------- */
 
-/** Single source of truth for sidebar width — consumed by the layout via `var(--sidebar-w)`. */
-export const SIDEBAR_WIDTH = "240px";
+interface SidebarProps {
+    collapsed?: boolean;
+}
 
-export default function Sidebar() {
+export default function Sidebar({ collapsed = false }: SidebarProps) {
     const [active, setActive] = useState<string>("overview");
     const [expanded, setExpanded] = useState<Set<string>>(new Set(["model"]));
     const [query, setQuery] = useState<string>("");
@@ -226,34 +234,35 @@ export default function Sidebar() {
     });
 
     return (
-        <aside
-            style={{ "--sidebar-w": SIDEBAR_WIDTH } as React.CSSProperties}
-            className="fixed flex h-full flex-col text-white antialiased border-r border-[#1e1e1e] bg-[#0a0a0a] w-[var(--sidebar-w)]"
-        >
+        <SidebarShell collapsed={collapsed} aria-label="Sandbox">
             {/* Search */}
-            <div className="p-2 pb-2">
-                <label className="flex h-9 items-center gap-2.5 rounded-lg border border-[#222] bg-[#0d0d0d] pl-3 pr-2 text-[#666] transition-colors focus-within:border-[#3a3a3a]">
-                    <Search />
-                    <input
-                        type="text"
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Find"
-                        aria-label="Find"
-                        className="min-w-0 flex-1 bg-transparent text-[13px] text-white placeholder:text-[#555] focus:outline-none"
-                    />
-                    {!query && (
-                        <kbd className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-[#333] bg-[#111] text-[11px] font-semibold text-[#888]">
-                            F
-                        </kbd>
-                    )}
-                </label>
-            </div>
+            {!collapsed && (
+                <div className="p-2 pb-2">
+                    <label className="flex h-9 items-center gap-2.5 rounded-lg border border-white/10 bg-[var(--jetic-recess)] pl-3 pr-2 text-[var(--jetic-faint)] transition-colors focus-within:border-[var(--jetic-ring)]">
+                        <Search />
+                        <input
+                            type="text"
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            placeholder="Find"
+                            aria-label="Find"
+                            className="min-w-0 flex-1 bg-transparent text-[13px] text-white placeholder:text-[var(--jetic-faint)] focus:outline-none"
+                        />
+                        {!query && (
+                            <kbd className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-white/10 bg-[var(--jetic-bg)] text-[11px] font-semibold text-[var(--jetic-muted)]">
+                                F
+                            </kbd>
+                        )}
+                    </label>
+                </div>
+            )}
 
             {/* Nav */}
             <nav
                 aria-label="Main"
-                className="flex-1 overflow-y-auto px-2 pb-4 [scrollbar-color:#2a2a2a_transparent] [scrollbar-width:thin]"
+                className={`flex-1 overflow-y-auto pb-4 [scrollbar-color:#2a2a2a_transparent] [scrollbar-width:thin] ${
+                    collapsed ? "px-1.5 pt-2" : "px-2"
+                }`}
             >
                 <ul className="flex flex-col gap-0.5">
                     {visibleItems.map((item) => {
@@ -265,13 +274,14 @@ export default function Sidebar() {
                                     label={item.label}
                                     icon={item.icon}
                                     active={active === item.id}
+                                    collapsed={collapsed}
                                     hasChildren={!!item.children?.length}
                                     open={isOpen}
                                     onSelect={setActive}
                                     onToggle={toggle}
                                 />
                                 {/* Children */}
-                                {item.children && isOpen && (
+                                {!collapsed && item.children && isOpen && (
                                     <ul className="mt-0.5 flex flex-col gap-0.5">
                                         {item.children.map((child) => (
                                             <NavRow
@@ -291,6 +301,6 @@ export default function Sidebar() {
                     })}
                 </ul>
             </nav>
-        </aside>
+        </SidebarShell>
     );
 }

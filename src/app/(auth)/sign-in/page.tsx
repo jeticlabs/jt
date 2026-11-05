@@ -4,7 +4,7 @@ import type { FormEvent } from "react";
 import { JeticIcon } from "@/components/jetic-icon";
 import { useRouter } from "next/navigation";
 import CodeSlots, { type CodeSlotsStatus } from "@/components/code-slot";
-import { requestEmailCode, verifyEmailCode } from "@/features/auth/auth.api";
+import { requestEmailCode, resendEmailCode, verifyEmailCode } from "@/features/auth/auth.api";
 
 
 const GoogleIcon = () => (
@@ -21,6 +21,7 @@ export default function SignIn() {
   const [status, setStatus] = useState<CodeSlotsStatus>("idle");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [codeResent, setCodeResent] = useState(false);
   const navigate = useRouter();
   const handleGoogle = () => {
     // TODO: hook up Google OAuth
@@ -38,6 +39,7 @@ export default function SignIn() {
       await requestEmailCode("sign-in", normalizedEmail);
       setEmail(normalizedEmail);
       setStatus("idle");
+      setCodeResent(false);
       setStep("code");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to send a code.");
@@ -62,9 +64,26 @@ export default function SignIn() {
     }
   };
 
+  const handleResendCode = async () => {
+    if (isLoading) return;
+    setIsLoading(true);
+    setErrorMessage(null);
+    setCodeResent(false);
+    try {
+      await resendEmailCode(email);
+      setStatus("idle");
+      setCodeResent(true);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to resend the code.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const backToEmail = () => {
     setStatus("idle");
     setErrorMessage(null);
+    setCodeResent(false);
     setStep("email");
   };
 
@@ -175,11 +194,26 @@ export default function SignIn() {
               </p>
             )}
 
+            {codeResent && (
+              <p role="status" className="mt-4 text-[14px] text-[#ededed]">
+                A new code has been sent to your email.
+              </p>
+            )}
+
+            <button
+              type="button"
+              onClick={handleResendCode}
+              disabled={isLoading}
+              className="jetic-muted mt-6 text-[14px] font-medium hover:text-white hover:underline disabled:opacity-50"
+            >
+              {isLoading ? "Sending code..." : "Resend code"}
+            </button>
+
             <button
               type="button"
               onClick={backToEmail}
               disabled={isLoading}
-              className="jetic-muted mt-6 text-[14px] font-medium hover:text-white hover:underline"
+              className="jetic-muted mt-3 text-[14px] font-medium hover:text-white hover:underline"
             >
               Use a different email
             </button>

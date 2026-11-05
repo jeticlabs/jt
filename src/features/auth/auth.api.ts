@@ -1,4 +1,4 @@
-type AuthAction = "sign-in" | "sign-up";
+type AuthAction = "sign-in" | "sign-up" | "resend-otp";
 
 interface ApiProblem {
   detail?: string;
@@ -24,8 +24,12 @@ async function postAuth<T>(action: AuthAction | "verify-otp", body: object): Pro
   return payload;
 }
 
-export async function requestEmailCode(action: AuthAction, email: string): Promise<void> {
+export async function requestEmailCode(action: Exclude<AuthAction, "resend-otp">, email: string): Promise<void> {
   await postAuth<{ status: "accepted" }>(action, { email });
+}
+
+export async function resendEmailCode(email: string): Promise<void> {
+  await postAuth<{ status: "accepted" }>("resend-otp", { email });
 }
 
 export async function verifyEmailCode(email: string, code: string): Promise<void> {
