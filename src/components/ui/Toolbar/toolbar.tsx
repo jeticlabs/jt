@@ -309,6 +309,7 @@ function Switcher({
 export interface ToolbarUser {
     name: string;
     email: string;
+    image: string | null;
 }
 
 export interface ToolbarWorkspace {
@@ -477,9 +478,9 @@ export default function Toolbar({
 
                     {/* Workspace menus — wide screens */}
                     {!isSandboxRoute && (
-                        <ProductMenus
-                            workspaceSlug={workspace.slug}
-                            className="ml-auto hidden items-center gap-1 xl:flex"
+                        <div
+
+                            className="w-full visible items-center gap-1 xl:flex"
                         />
                     )}
 
@@ -506,8 +507,17 @@ export default function Toolbar({
                                 title={`${user.name} · ${user.email}`}
                                 className="flex h-7 items-center gap-2 rounded-full border border-white/10 pl-1 pr-2 transition-colors hover:bg-[var(--jetic-well)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
                             >
-                                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white text-[11px] font-semibold text-black">
-                                    {(user.name.charAt(0) || user.email.charAt(0)).toUpperCase()}
+                                <span
+                                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white bg-cover bg-center text-[11px] font-semibold text-black"
+                                    style={
+                                        user.image
+                                            ? { backgroundImage: `url(${JSON.stringify(user.image)})` }
+                                            : undefined
+                                    }
+                                >
+                                    {user.image
+                                        ? null
+                                        : (user.name.charAt(0) || user.email.charAt(0)).toUpperCase()}
                                 </span>
                                 <span className="max-w-[92px] truncate text-[var(--jetic-emphasis)] sm:max-w-[180px]">
                                     {user.email}
@@ -519,13 +529,27 @@ export default function Toolbar({
                             {accountMenuOpen && (
                                 <div
                                     role="menu"
-                                    className="jetic-menu absolute right-0 top-[calc(100%+8px)] z-40 w-60 p-1"
+                                    className="jetic-menu rounded absolute right-0 top-[calc(100%+8px)] z-40 w-60 p-1"
                                 >
-                                    <div className="border-b border-white/10 px-2.5 py-2">
-                                        <p className="truncate text-[13px] font-medium text-white">
-                                            {user.name}
-                                        </p>
-                                        <p className="jetic-muted truncate text-[12px]">{user.email}</p>
+                                    <div className="flex items-center gap-2.5 border-b border-white/10 px-2.5 py-2">
+                                        <span
+                                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--jetic-recess)] bg-cover bg-center text-[11px] font-semibold text-white"
+                                            style={
+                                                user.image
+                                                    ? { backgroundImage: `url(${JSON.stringify(user.image)})` }
+                                                    : undefined
+                                            }
+                                        >
+                                            {user.image
+                                                ? null
+                                                : (user.name.charAt(0) || user.email.charAt(0)).toUpperCase()}
+                                        </span>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="truncate text-[13px] font-medium text-white">
+                                                {user.name}
+                                            </p>
+                                            <p className="jetic-muted truncate text-[12px]">{user.email}</p>
+                                        </div>
                                     </div>
                                     <button
                                         type="button"

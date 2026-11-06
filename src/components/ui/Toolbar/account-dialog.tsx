@@ -18,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 
+import { ImageUploadButton } from "@/components/ui/image-upload-button";
 import {
   AccountDetailsSkeleton,
   AccountPanelSkeleton,
@@ -426,15 +427,6 @@ function deviceDetails(device: Device | null): string {
   return parts.length > 0 ? parts.join(" · ") : "Recognized device";
 }
 
-function isValidHttpUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
 async function copyText(value: string): Promise<void> {
   if (navigator.clipboard?.writeText) {
     try {
@@ -500,17 +492,13 @@ function ProfilePanel({
 }) {
   const router = useRouter();
   const [name, setName] = useState(user.name);
-  const [image, setImage] = useState(user.image ?? "");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const trimmedName = name.trim();
-  const trimmedImage = image.trim();
   const previewName = trimmedName || user.name;
-  const previewImage = isValidHttpUrl(trimmedImage) ? trimmedImage : user.image;
-  const dirty =
-    trimmedName !== user.name || trimmedImage !== (user.image ?? "");
+  const dirty = trimmedName !== user.name;
 
   const saveProfile = async () => {
     if (!dirty || saving) return;
@@ -523,20 +511,6 @@ function ProfilePanel({
       setFormError("Display names can be at most 100 characters.");
       return;
     }
-    if (trimmedImage.length > 500) {
-      setFormError("Avatar URLs can be at most 500 characters.");
-      return;
-    }
-    if (trimmedImage.length > 0 && !isValidHttpUrl(trimmedImage)) {
-      setFormError("Enter a valid http(s) avatar URL, or leave the field blank.");
-      return;
-    }
-
-    const body: { name?: string; image?: string | null } = {};
-    if (trimmedName !== user.name) body.name = trimmedName;
-    if (trimmedImage !== (user.image ?? "")) {
-      body.image = trimmedImage.length > 0 ? trimmedImage : null;
-    }
 
     setSaving(true);
     setFormError(null);
@@ -544,12 +518,31 @@ function ProfilePanel({
     try {
       const result = await apiFetch<UserEnvelope>("/v1/users/me", {
         method: "PATCH",
-        body,
+        body: { name: trimmedName },
       });
       onProfileChange(result.user);
       setName(result.user.name);
-      setImage(result.user.image ?? "");
       setNotice("Profile updated.");
+      router.refresh();
+    } catch (cause) {
+      setFormError(errorMessage(cause));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeAvatar = async () => {
+    if (saving) return;
+    setSaving(true);
+    setFormError(null);
+    setNotice(null);
+    try {
+      const result = await apiFetch<UserEnvelope>("/v1/users/me", {
+        method: "PATCH",
+        body: { image: null },
+      });
+      onProfileChange(result.user);
+      setNotice("Avatar removed.");
       router.refresh();
     } catch (cause) {
       setFormError(errorMessage(cause));
@@ -564,7 +557,7 @@ function ProfilePanel({
         <Avatar
           name={previewName}
           email={user.email}
-          image={previewImage}
+          image={user.image}
           size="lg"
         />
         <div className="min-w-0 flex-1">
@@ -577,6 +570,34 @@ function ProfilePanel({
             </Badge>
           </div>
           <p className="jetic-muted mt-0.5 truncate text-[12.5px]">{user.email}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <ImageUploadButton
+              endpoint="userAvatar"
+              disabled={saving}
+              onUploaded={(url) => {
+                onProfileChange({ ...user, image: url });
+                setFormError(null);
+                setNotice("Avatar updated.");
+                router.refresh();
+              }}
+              onError={(message) => {
+                setNotice(null);
+                setFormError(message);
+              }}
+            >
+              Upload avatar
+            </ImageUploadButton>
+            {user.image && (
+              <button
+                type="button"
+                onClick={() => void removeAvatar()}
+                disabled={saving}
+                className="inline-flex h-8 items-center justify-center rounded-md border border-white/10 px-3 text-[12px] font-medium text-white transition-colors hover:border-white/20 hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {saving ? "Removing…" : "Remove"}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -633,29 +654,6 @@ function ProfilePanel({
                 Contact support to change your sign-in email.
               </p>
             </div>
-          </div>
-
-          <div>
-            <label htmlFor="account-avatar" className="jetic-muted mb-1.5 block text-[11.5px]">
-              Avatar URL
-            </label>
-            <input
-              id="account-avatar"
-              type="url"
-              value={image}
-              maxLength={500}
-              disabled={saving}
-              onChange={(event) => {
-                setImage(event.target.value);
-                setFormError(null);
-                setNotice(null);
-              }}
-              placeholder="https://example.com/avatar.png"
-              className={inputClass}
-            />
-            <p className="jetic-muted mt-1 text-[10.5px]">
-              Leave blank to use your initials.
-            </p>
           </div>
 
           <Notice error={formError} notice={notice} />

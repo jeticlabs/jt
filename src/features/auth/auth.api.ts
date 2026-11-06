@@ -24,6 +24,12 @@ async function postAuth<T>(action: AuthAction | "verify-otp", body: object): Pro
   return payload;
 }
 
+export function githubSignInUrl(next?: string | null): string {
+  const url = new URL(`${API_BASE_URL}/v1/auth/github`);
+  if (next) url.searchParams.set("next", next);
+  return url.toString();
+}
+
 export async function requestEmailCode(action: Exclude<AuthAction, "resend-otp">, email: string): Promise<void> {
   await postAuth<{ status: "accepted" }>(action, { email });
 }

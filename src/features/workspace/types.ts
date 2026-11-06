@@ -26,6 +26,7 @@ export interface WorkspaceSummary {
   readonly name: string;
   readonly slug: string;
   readonly plan: Plan;
+  readonly logo: string | null;
   readonly role: OrganizationRole;
   readonly memberId: string;
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
+import { ImageUploadButton } from "@/components/ui/image-upload-button";
 import type { Plan, WorkspaceSummary } from "@/features/workspace/types";
 import { isValidSlug } from "@/features/workspace/slug";
 import { useSlugAvailability } from "@/features/workspace/use-slug-availability";
@@ -91,12 +92,15 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
   const [name, setName] = useState(workspace.name);
   const [slug, setSlug] = useState(workspace.slug);
   const [plan, setPlan] = useState<Plan>(workspace.plan);
+  const [logo, setLogo] = useState(workspace.logo);
 
   const [savedName, setSavedName] = useState(workspace.name);
   const [savedSlug, setSavedSlug] = useState(workspace.slug);
   const [savedPlan, setSavedPlan] = useState<Plan>(workspace.plan);
 
-  const [busy, setBusy] = useState<"name" | "slug" | "plan" | "delete" | null>(null);
+  const [busy, setBusy] = useState<"name" | "slug" | "plan" | "logo" | "delete" | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -180,6 +184,23 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
     }
   };
 
+  const removeLogo = async () => {
+    if (!isOwner || busy !== null) return;
+    setBusy("logo");
+    setError(null);
+    setNotice(null);
+    try {
+      await apiFetch(base, { method: "PATCH", body: { logo: null } });
+      setLogo(null);
+      setNotice("Workspace icon removed.");
+      router.refresh();
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const deleteWorkspace = async () => {
     if (!isOwner || deleteConfirm !== workspace.name) return;
     setBusy("delete");
@@ -230,6 +251,61 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
             {error ?? notice}
           </p>
         )}
+
+        <Card
+          title="Workspace icon"
+          description="Upload an image that represents this workspace across Jetic."
+          footer={
+            <span>
+              {isOwner
+                ? "PNG, JPG, WebP, or GIF up to 4 MB."
+                : "Only owners can change the workspace icon."}
+            </span>
+          }
+        >
+          <div className="flex flex-wrap items-center gap-4">
+            <span
+              aria-hidden="true"
+              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-[var(--jetic-recess)] bg-cover bg-center text-lg font-semibold text-white"
+              style={
+                logo
+                  ? { backgroundImage: `url(${JSON.stringify(logo)})` }
+                  : undefined
+              }
+            >
+              {logo ? null : workspace.name.charAt(0).toUpperCase()}
+            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <ImageUploadButton
+                endpoint="workspaceIcon"
+                input={{ organizationId: workspace.id }}
+                disabled={!isOwner}
+                onUploaded={(url) => {
+                  setLogo(url);
+                  setError(null);
+                  setNotice("Workspace icon updated.");
+                  router.refresh();
+                }}
+                onError={(message) => {
+                  setNotice(null);
+                  setError(message);
+                }}
+              >
+                Upload icon
+              </ImageUploadButton>
+              {logo && isOwner && (
+                <button
+                  type="button"
+                  onClick={() => void removeLogo()}
+                  disabled={busy !== null}
+                  className="inline-flex h-8 items-center justify-center rounded-md border border-white/10 px-3 text-[12px] font-medium text-white transition-colors hover:border-white/20 hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {busy === "logo" ? "Removing…" : "Remove"}
+                </button>
+              )}
+            </div>
+          </div>
+        </Card>
 
         <Card
           title="Workspace name"

@@ -41,7 +41,11 @@ export default async function WorkspaceLayout({
   return (
     <div className={`${inter.className} h-full w-full bg-[#111111]`}>
       <WorkspaceChrome
-        user={{ name: context.user.name, email: context.user.email }}
+        user={{
+          name: context.user.name,
+          email: context.user.email,
+          image: context.user.image,
+        }}
         workspace={workspace}
         workspaces={allWorkspaces}
       >

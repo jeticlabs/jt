@@ -21,7 +21,7 @@ interface Source {
 const SOURCES: Source[] = [
   {
     id: "blank",
-    label: "Blank workspace",
+    label: "Blank Sandbox",
     description: "Start with an empty sandbox and add files yourself.",
     icon: <PackageOpen size={20} strokeWidth={1.6} />,
     requiresLocation: false,

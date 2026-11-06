@@ -18,6 +18,7 @@ function toWorkspace(membership: OrganizationMembership): WorkspaceSummary {
     name: membership.organization.name,
     slug: membership.organization.slug,
     plan: membership.organization.plan,
+    logo: membership.organization.logo,
     role: membership.role,
     memberId: membership.memberId,
   };
