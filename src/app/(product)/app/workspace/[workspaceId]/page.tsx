@@ -1,6 +1,5 @@
 "use client";
 
-import { CpuAi } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 /* ------------------------------- Icons ---------------------------------- */

@@ -12,7 +12,10 @@ import { useParams, usePathname, useRouter } from "next/navigation";
 import Sidebar from "@/components/ui/Sidebar/Sidebar";
 import { SidebarShell } from "@/components/ui/Sidebar/sidebar-shell";
 import WorkspaceSidebar from "@/components/ui/Sidebar/workspace-sidebar";
-import Toolbar from "@/components/ui/Toolbar/toolbar";
+import Toolbar, {
+  type ToolbarUser,
+  type ToolbarWorkspace,
+} from "@/components/ui/Toolbar/toolbar";
 
 interface ChromeState {
   collapsed: boolean;
@@ -29,6 +32,13 @@ function useChrome(): ChromeState {
   return value;
 }
 
+interface WorkspaceChromeProps {
+  user: ToolbarUser;
+  workspace: ToolbarWorkspace;
+  workspaces: ToolbarWorkspace[];
+  children: ReactNode;
+}
+
 /**
  * Shared shell for every `/app/workspace/[workspaceId]` route.
  *
@@ -37,7 +47,12 @@ function useChrome(): ChromeState {
  *   - workspace routes → workspace nav (Overview / Integrations / …)
  *   - sandbox routes   → sandbox editor nav
  */
-export function WorkspaceChrome({ children }: { children: ReactNode }) {
+export function WorkspaceChrome({
+  user,
+  workspace,
+  workspaces,
+  children,
+}: WorkspaceChromeProps) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -46,12 +61,12 @@ export function WorkspaceChrome({ children }: { children: ReactNode }) {
     >
       <div className="jetic-surface flex h-full min-h-0 w-full flex-col">
         <Suspense fallback={<ToolbarFallback />}>
-          <ChromeToolbar />
+          <ChromeToolbar user={user} workspace={workspace} workspaces={workspaces} />
         </Suspense>
 
         <div className="flex min-h-0 w-full flex-1">
           <Suspense fallback={<SidebarFallback />}>
-            <SidebarOutlet />
+            <SidebarOutlet workspaceName={workspace.name} />
           </Suspense>
 
           <div className="min-w-0 flex-1 overflow-y-auto">{children}</div>
@@ -61,28 +76,47 @@ export function WorkspaceChrome({ children }: { children: ReactNode }) {
   );
 }
 
-function ChromeToolbar() {
-  const workspaceId = useWorkspaceId();
-  const params = useParams<{ sandboxId?: string | string[] }>();
+function ChromeToolbar({
+  user,
+  workspace,
+  workspaces,
+}: {
+  user: ToolbarUser;
+  workspace: ToolbarWorkspace;
+  workspaces: ToolbarWorkspace[];
+}) {
+  const params = useParams<{ workspaceId?: string | string[]; sandboxId?: string | string[] }>();
   const pathname = usePathname() ?? "";
   const router = useRouter();
   const { collapsed, toggleSidebar } = useChrome();
+  const workspaceSlug = Array.isArray(params?.workspaceId)
+    ? params.workspaceId[0] ?? workspace.slug
+    : params?.workspaceId ?? workspace.slug;
   const sandboxId = Array.isArray(params?.sandboxId)
     ? params.sandboxId[0] ?? ""
     : params?.sandboxId ?? "";
   const isSandboxRoute = /^\/app\/workspace\/[^/]+\/sandbox\/[^/]+(?:\/|$)/.test(pathname);
   const isAgenticMode = /\/chat(?:\/|$)/.test(pathname);
 
+  const openSandbox = (id: string) => {
+    if (!id || id === sandboxId) return;
+    const basePath = `/app/workspace/${encodeURIComponent(workspaceSlug)}/sandbox/${encodeURIComponent(id)}`;
+    router.push(isAgenticMode ? `${basePath}/chat` : basePath);
+  };
+
   return (
     <Toolbar
-      key={`${workspaceId}:${sandboxId}`}
-      workspace={workspaceId}
+      key={`${workspace.id}:${sandboxId}`}
+      user={user}
+      workspace={workspace}
+      workspaces={workspaces}
       project={sandboxId}
       isSandboxRoute={isSandboxRoute}
       isAgenticMode={isAgenticMode}
+      onSelectSandbox={openSandbox}
       onModeChange={(mode) => {
         if (!sandboxId) return;
-        const basePath = `/app/workspace/${encodeURIComponent(workspaceId)}/sandbox/${encodeURIComponent(sandboxId)}`;
+        const basePath = `/app/workspace/${encodeURIComponent(workspaceSlug)}/sandbox/${encodeURIComponent(sandboxId)}`;
         router.push(mode === "Agentic Mode" ? `${basePath}/chat` : basePath);
       }}
       sidebarCollapsed={collapsed}
@@ -91,7 +125,7 @@ function ChromeToolbar() {
   );
 }
 
-function SidebarOutlet() {
+function SidebarOutlet({ workspaceName }: { workspaceName: string }) {
   const workspaceId = useWorkspaceId();
   const pathname = usePathname() ?? "";
   const { collapsed } = useChrome();
@@ -101,7 +135,11 @@ function SidebarOutlet() {
   return isSandbox ? (
     <Sidebar collapsed={collapsed} />
   ) : (
-    <WorkspaceSidebar workspaceId={workspaceId} collapsed={collapsed} />
+    <WorkspaceSidebar
+      workspaceId={workspaceId}
+      workspaceName={workspaceName}
+      collapsed={collapsed}
+    />
   );
 }
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { SESSION_COOKIE_NAMES } from "@/lib/auth-cookie";
 
 /**
  * Hostname → base path rewrites.
@@ -13,7 +14,25 @@ const HOST_MAP: Record<string, string | null> = {
   "web.jetic.space": null, // root — no prefix, serve as-is
 };
 
+function isProductRoute(pathname: string): boolean {
+  return pathname === "/app" || pathname.startsWith("/app/");
+}
+
 export function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Optimistic barrier. The product layout validates the session against the
+  // API; this just avoids even starting a render without a cookie.
+  if (
+    isProductRoute(pathname) &&
+    !SESSION_COOKIE_NAMES.some((name) => request.cookies.has(name))
+  ) {
+    const signIn = request.nextUrl.clone();
+    signIn.pathname = "/sign-in";
+    signIn.search = "";
+    return NextResponse.redirect(signIn);
+  }
+
   const hostname = request.headers
     .get("host")
     ?.split(":")[0]

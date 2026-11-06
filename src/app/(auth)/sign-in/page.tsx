@@ -4,7 +4,13 @@ import type { FormEvent } from "react";
 import { JeticIcon } from "@/components/jetic-icon";
 import { useRouter } from "next/navigation";
 import CodeSlots, { type CodeSlotsStatus } from "@/components/code-slot";
-import { requestEmailCode, resendEmailCode, verifyEmailCode } from "@/features/auth/auth.api";
+import {
+  establishBrowserSession,
+  requestEmailCode,
+  resendEmailCode,
+  verifyEmailCode,
+} from "@/features/auth/auth.api";
+import { postAuthDestination } from "@/features/auth/redirect";
 
 
 const GoogleIcon = () => (
@@ -53,9 +59,10 @@ export default function SignIn() {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      await verifyEmailCode(email, code);
+      const token = await verifyEmailCode(email, code);
+      await establishBrowserSession(token);
       setStatus("success");
-      window.setTimeout(() => navigate.push("/app/onboarding"), 700);
+      window.setTimeout(() => navigate.push(postAuthDestination()), 700);
     } catch (error) {
       setStatus("error");
       setErrorMessage(error instanceof Error ? error.message : "Unable to verify that code.");

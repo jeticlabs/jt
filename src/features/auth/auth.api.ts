@@ -32,6 +32,27 @@ export async function resendEmailCode(email: string): Promise<void> {
   await postAuth<{ status: "accepted" }>("resend-otp", { email });
 }
 
-export async function verifyEmailCode(email: string, code: string): Promise<void> {
-  await postAuth<{ user: unknown; session: unknown }>("verify-otp", { email, code });
+export async function verifyEmailCode(email: string, code: string): Promise<string> {
+  const result = await postAuth<{ user: unknown; session: unknown; token: string }>(
+    "verify-otp",
+    { email, code },
+  );
+  return result.token;
+}
+
+/**
+ * Hands the opaque API token to the web app's own session endpoint. It then
+ * lives in an httpOnly cookie on this origin and is turned into a bearer token
+ * by `/api/proxy` on demand.
+ */
+export async function establishBrowserSession(token: string): Promise<void> {
+  const response = await fetch("/api/auth/session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Unable to finish signing you in. Please try again.");
+  }
 }

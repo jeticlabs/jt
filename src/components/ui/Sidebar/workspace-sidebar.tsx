@@ -90,11 +90,13 @@ const NAV: WorkspaceNavItem[] = [
 
 interface WorkspaceSidebarProps {
   workspaceId: string;
+  workspaceName?: string;
   collapsed?: boolean;
 }
 
 export default function WorkspaceSidebar({
   workspaceId,
+  workspaceName,
   collapsed = false,
 }: WorkspaceSidebarProps) {
   const pathname = usePathname() ?? "";
@@ -116,7 +118,7 @@ export default function WorkspaceSidebar({
           </span>
         ) : (
           <span className="min-w-0 truncate text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--jetic-faint)]">
-            Workspace
+            {workspaceName ?? "Workspace"}
           </span>
         )}
       </div>

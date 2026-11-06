@@ -1,29 +1,27 @@
-"use client"
+"use client";
+
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { Check, ChevronsUpDown, Plus, PlusIcon, X } from "lucide-react";
+
 import { inter } from "@/app/fonts";
+import type { OrganizationRole } from "@/features/workspace/types";
+import { apiFetch, errorMessage } from "@/lib/api/browser";
+import { CreateSandboxDialog } from "./create-sandbox-dialog";
+import { CreateWorkspaceDialog } from "./create-workspace-dialog";
 
 type Tab = "Manual" | "Agentic Mode";
-type SettingsSection =
-    | "Profile"
-    | "Devices & sessions"
-    | "Notifications"
-    | "Support"
-    | "Data & privacy";
 
-const TABS: { id: Tab; locked?: boolean }[] = [
-    { id: "Manual" },
-    { id: "Agentic Mode" }
-];
+const TABS: { id: Tab; locked?: boolean }[] = [{ id: "Manual" }, { id: "Agentic Mode" }];
 
-const MENUS = ["Overview", "Integrations", "Members", "Billing & Usage", "Settings"] as const;
-const SETTINGS_SECTIONS: SettingsSection[] = [
-    "Profile",
-    "Devices & sessions",
-    "Notifications",
-    "Support",
-    "Data & privacy",
+const MENUS: { label: string; segment: string }[] = [
+    { label: "Overview", segment: "" },
+    { label: "Integrations", segment: "integrations" },
+    { label: "Members", segment: "members" },
+    { label: "Billing & Usage", segment: "billing" },
+    { label: "Settings", segment: "settings" },
 ];
 
 /* ---------- Icons (inline, 24x24 stroke icons) ---------- */
@@ -56,61 +54,6 @@ const PanelRight = () => (
         <path d="M15 3v18" />
     </Icon>
 );
-const SplitView = () => (
-    <Icon>
-        <rect x="3" y="3" width="18" height="18" rx="2" />
-        <path d="M12 3v18" />
-    </Icon>
-);
-const Undo = () => (
-    <Icon>
-        <path d="M9 14L4 9l5-5" />
-        <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
-    </Icon>
-);
-const Redo = () => (
-    <Icon>
-        <path d="M15 14l5-5-5-5" />
-        <path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />
-    </Icon>
-);
-const History = () => (
-    <Icon>
-        <path d="M3 3v5h5" />
-        <path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" />
-        <path d="M12 7v5l4 2" />
-    </Icon>
-);
-const Refresh = () => (
-    <Icon>
-        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-        <path d="M21 3v5h-5" />
-        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-        <path d="M8 16H3v5" />
-    </Icon>
-);
-const Search = () => (
-    <Icon>
-        <circle cx="11" cy="11" r="7.5" />
-        <path d="m21 21-4.3-4.3" />
-    </Icon>
-);
-const Download = () => (
-    <Icon>
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-        <path d="m7 10 5 5 5-5" />
-        <path d="M12 15V3" />
-    </Icon>
-);
-const Share = () => (
-    <Icon>
-        <circle cx="18" cy="5" r="3" />
-        <circle cx="6" cy="12" r="3" />
-        <circle cx="18" cy="19" r="3" />
-        <path d="m8.59 13.51 6.83 3.98" />
-        <path d="m15.41 6.51-6.82 3.98" />
-    </Icon>
-);
 const Lock = () => (
     <Icon size={12}>
         <rect x="3" y="11" width="18" height="11" rx="2" />
@@ -128,29 +71,27 @@ const ChevronDown = () => (
 interface IconButtonProps {
     label: string;
     children: ReactNode;
-    bordered?: boolean;
     disabled?: boolean;
     onClick?: () => void;
 }
 
-const IconButton = ({ label, children, bordered, disabled, onClick }: IconButtonProps) => (
+const IconButton = ({ label, children, disabled, onClick }: IconButtonProps) => (
     <button
         type="button"
         aria-label={label}
         title={label}
         disabled={disabled}
         onClick={onClick}
-        className={`flex h-7 w-8 items-center justify-center rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${bordered ? "border border-white/10" : ""
-            } ${disabled
-                ? "cursor-not-allowed text-[var(--jetic-faint)]"
-                : "text-[var(--jetic-muted)] hover:bg-[var(--jetic-well)] hover:text-white"
+        className={`flex h-7 w-8 items-center justify-center rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${disabled
+            ? "cursor-not-allowed text-[var(--jetic-faint)]"
+            : "text-[var(--jetic-muted)] hover:bg-[var(--jetic-well)] hover:text-white"
             }`}
     >
         {children}
     </button>
 );
 
-/* ---------- View tabs + product menus (rendered in row 1 or the overflow strip) ---------- */
+/* ---------- View tabs + workspace menus ---------- */
 
 function ViewTabs({
     tab,
@@ -198,33 +139,52 @@ function ViewTabs({
     );
 }
 
-function ProductMenus({ className = "" }: { className?: string }) {
+function ProductMenus({
+    workspaceSlug,
+    className = "",
+}: {
+    workspaceSlug: string;
+    className?: string;
+}) {
+    const pathname = usePathname() ?? "";
+    const base = `/app/workspace/${encodeURIComponent(workspaceSlug)}`;
+
     return (
         <div className={className}>
-            {MENUS.map((m) => (
-                <button
-                    key={m}
-                    type="button"
-                    className="whitespace-nowrap rounded-xl px-2 py-1 text-[var(--jetic-emphasis)] transition-colors hover:bg-[var(--jetic-well)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
-                >
-                    {m}
-                </button>
-            ))}
+            {MENUS.map((item) => {
+                const href = item.segment ? `${base}/${item.segment}` : base;
+                const active = item.segment
+                    ? pathname === href || pathname.startsWith(`${href}/`)
+                    : pathname === base;
+                return (
+                    <Link
+                        key={item.label}
+                        href={href}
+                        aria-current={active ? "page" : undefined}
+                        className={`whitespace-nowrap rounded-xl px-2 py-1 transition-colors hover:bg-[var(--jetic-well)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${active
+                            ? "font-medium text-white"
+                            : "text-[var(--jetic-emphasis)]"
+                            }`}
+                    >
+                        {item.label}
+                    </Link>
+                );
+            })}
         </div>
     );
 }
 
-function SettingsDialog({
+/* ---------- Account dialog ---------- */
+
+function AccountDialog({
     open,
-    section,
-    userName,
-    onSectionChange,
+    user,
+    onSignOut,
     onClose,
 }: {
     open: boolean;
-    section: SettingsSection;
-    userName: string;
-    onSectionChange: (section: SettingsSection) => void;
+    user: { name: string; email: string };
+    onSignOut: () => void;
     onClose: () => void;
 }) {
     useEffect(() => {
@@ -238,14 +198,6 @@ function SettingsDialog({
 
     if (!open) return null;
 
-    const descriptions: Record<SettingsSection, string> = {
-        Profile: "Manage your personal details and account information.",
-        "Devices & sessions": "Review the devices and active sessions connected to your account.",
-        Notifications: "Choose how you receive account and product updates.",
-        Support: "Find help and contact the Jetic support team.",
-        "Data & privacy": "Manage your data, privacy, and account preferences.",
-    };
-
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
@@ -256,56 +208,52 @@ function SettingsDialog({
             <section
                 role="dialog"
                 aria-modal="true"
-                aria-labelledby="account-settings-title"
-                className="flex h-[min(620px,calc(100vh-2rem))] w-full max-w-4xl overflow-hidden rounded-2xl border border-white/10 bg-[#111111] text-white shadow-2xl"
+                aria-labelledby="account-title"
+                className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-[#111111] text-white shadow-2xl"
             >
-                <aside className="w-56 shrink-0 border-r border-white/10 bg-[#0c0c0c] p-4 max-sm:w-40 max-sm:p-2">
-                    <p className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-[var(--jetic-muted)]">
-                        Account settings
-                    </p>
-                    <nav aria-label="Settings sections" className="mt-2 space-y-1">
-                        {SETTINGS_SECTIONS.map((item) => (
-                            <button
-                                key={item}
-                                type="button"
-                                aria-current={section === item ? "page" : undefined}
-                                onClick={() => onSectionChange(item)}
-                                className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                                    section === item
-                                        ? "bg-white/10 font-medium text-white"
-                                        : "text-[var(--jetic-muted)] hover:bg-white/5 hover:text-white"
-                                }`}
-                            >
-                                {item}
-                            </button>
-                        ))}
-                    </nav>
-                </aside>
-                <div className="min-w-0 flex-1 overflow-y-auto p-6 max-sm:p-4">
-                    <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-5">
-                        <div>
-                            <h2 id="account-settings-title" className="text-xl font-semibold">
-                                {section}
-                            </h2>
-                            <p className="mt-1 text-sm text-[var(--jetic-muted)]">
-                                {descriptions[section]}
-                            </p>
-                        </div>
-                        <button
-                            type="button"
-                            aria-label="Close settings"
-                            onClick={onClose}
-                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--jetic-muted)] hover:bg-white/10 hover:text-white"
-                        >
-                            <X size={16} />
-                        </button>
+                <div className="flex items-start justify-between gap-4 border-b border-white/10 p-5">
+                    <div>
+                        <h2 id="account-title" className="text-lg font-semibold">
+                            Account
+                        </h2>
+                        <p className="jetic-muted mt-1 text-[13px]">
+                            The account signed in to this browser.
+                        </p>
                     </div>
-                    {section === "Profile" && (
-                        <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                            <p className="text-sm font-medium">Name</p>
-                            <p className="mt-1 text-sm text-[var(--jetic-muted)]">{userName}</p>
-                        </div>
-                    )}
+                    <button
+                        type="button"
+                        aria-label="Close"
+                        onClick={onClose}
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--jetic-muted)] hover:bg-white/10 hover:text-white"
+                    >
+                        <X size={16} />
+                    </button>
+                </div>
+                <dl className="flex flex-col gap-4 p-5 text-sm">
+                    <div>
+                        <dt className="jetic-muted text-[12px]">Name</dt>
+                        <dd className="mt-1 text-white">{user.name}</dd>
+                    </div>
+                    <div>
+                        <dt className="jetic-muted text-[12px]">Email</dt>
+                        <dd className="mt-1 break-all text-white">{user.email}</dd>
+                    </div>
+                </dl>
+                <div className="flex items-center justify-between gap-2 border-t border-white/10 p-4">
+                    <button
+                        type="button"
+                        onClick={onSignOut}
+                        className="jetic-btn h-9 px-3.5 text-[13px]"
+                    >
+                        Sign out
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="jetic-btn-light h-9 px-3.5 text-[13px]"
+                    >
+                        Done
+                    </button>
                 </div>
             </section>
         </div>
@@ -314,17 +262,32 @@ function SettingsDialog({
 
 /* ---------- Switcher (searchable popover: list + create) ---------- */
 
+interface SwitcherItem {
+    id: string;
+    label: string;
+}
+
 interface SwitcherProps {
     label: string;
-    value: string;
-    items: string[];
-    onSelect: (v: string) => void;
+    valueId: string;
+    items: SwitcherItem[];
+    onSelect: (id: string) => void;
     onCreate: () => void;
     createLabel: string;
     searchPlaceholder: string;
+    disabled?: boolean;
 }
 
-function Switcher({ label, value, items, onSelect, onCreate, createLabel, searchPlaceholder }: SwitcherProps) {
+function Switcher({
+    label,
+    valueId,
+    items,
+    onSelect,
+    onCreate,
+    createLabel,
+    searchPlaceholder,
+    disabled = false,
+}: SwitcherProps) {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState("");
     const ref = useRef<HTMLDivElement>(null);
@@ -345,8 +308,13 @@ function Switcher({ label, value, items, onSelect, onCreate, createLabel, search
         };
     }, [open]);
 
+    const current = items.find((item) => item.id === valueId);
     const q = query.trim().toLowerCase();
-    const filtered = q ? items.filter((i) => i.toLowerCase().includes(q)) : items;
+    const filtered = q
+        ? items.filter((item) =>
+            `${item.label} ${item.id}`.toLowerCase().includes(q),
+        )
+        : items;
 
     return (
         <div ref={ref} className="relative">
@@ -355,13 +323,16 @@ function Switcher({ label, value, items, onSelect, onCreate, createLabel, search
                 aria-haspopup="listbox"
                 aria-expanded={open}
                 aria-label={label}
+                disabled={disabled}
                 onClick={() => {
                     setQuery("");
                     setOpen((o) => !o);
                 }}
-                className="flex items-center gap-1 rounded-lg px-1 py-0.5 font-semibold text-white transition-colors hover:bg-[var(--jetic-well)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                className="flex items-center gap-1 rounded-lg px-1 py-0.5 font-semibold text-white transition-colors hover:bg-[var(--jetic-well)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 disabled:opacity-50"
             >
-                <span className="max-w-[80px] truncate sm:max-w-[140px]">{value}</span>
+                <span className="max-w-[90px] truncate sm:max-w-[160px]">
+                    {current?.label ?? "Select"}
+                </span>
                 <ChevronsUpDown size={14} className="shrink-0 text-[var(--jetic-muted)]" />
             </button>
 
@@ -378,17 +349,17 @@ function Switcher({ label, value, items, onSelect, onCreate, createLabel, search
                     />
                     <ul role="listbox" aria-label={label} className="mt-1 max-h-56 overflow-y-auto">
                         {filtered.map((item) => (
-                            <li key={item} role="option" aria-selected={item === value}>
+                            <li key={item.id} role="option" aria-selected={item.id === valueId}>
                                 <button
                                     type="button"
                                     onClick={() => {
-                                        onSelect(item);
+                                        onSelect(item.id);
                                         setOpen(false);
                                     }}
                                     className="jetic-menu-item"
                                 >
-                                    <span className="flex-1 truncate">{item}</span>
-                                    {item === value && <Check size={14} className="shrink-0" />}
+                                    <span className="flex-1 truncate">{item.label}</span>
+                                    {item.id === valueId && <Check size={14} className="shrink-0" />}
                                 </button>
                             </li>
                         ))}
@@ -402,8 +373,8 @@ function Switcher({ label, value, items, onSelect, onCreate, createLabel, search
                         <button
                             type="button"
                             onClick={() => {
-                                onCreate();
                                 setOpen(false);
+                                onCreate();
                             }}
                             className="jetic-menu-item font-medium text-[var(--jetic-emphasis)]"
                         >
@@ -419,18 +390,27 @@ function Switcher({ label, value, items, onSelect, onCreate, createLabel, search
 
 /* ---------- Component ---------- */
 
+export interface ToolbarUser {
+    name: string;
+    email: string;
+}
+
+export interface ToolbarWorkspace {
+    id: string;
+    name: string;
+    slug: string;
+    role: OrganizationRole;
+}
+
 interface EditorTopBarProps {
-    workspace?: string;
+    workspace: ToolbarWorkspace;
+    workspaces: ToolbarWorkspace[];
+    user: ToolbarUser;
     project?: string;
-    userName?: string;
+    sandboxes?: string[];
     isSandboxRoute?: boolean;
     isAgenticMode?: boolean;
-    workspaces?: string[];
-    sandboxes?: string[];
-    onSelectWorkspace?: (v: string) => void;
     onSelectSandbox?: (v: string) => void;
-    onCreateWorkspace?: () => void;
-    onCreateSandbox?: () => void;
     onModeChange?: (tab: Tab) => void;
     /** When true the product sidebar is collapsed; the toggle shows "expand". */
     sidebarCollapsed?: boolean;
@@ -438,27 +418,26 @@ interface EditorTopBarProps {
 }
 
 export default function Toolbar({
-    workspace: initialWorkspace = "prutotechnologies",
-    project: initialProject = "test-sandbox",
-    userName = "Oyewale Prudence",
+    workspace,
+    workspaces,
+    user,
+    project = "",
+    sandboxes = [],
     isSandboxRoute = false,
     isAgenticMode = false,
-    workspaces = ["prutotechnologies", "acme", "sandbox-lab"],
-    sandboxes = ["test-sandbox", "api-playground", "prod-mirror"],
-    onSelectWorkspace,
     onSelectSandbox,
-    onCreateWorkspace,
-    onCreateSandbox,
     onModeChange,
     sidebarCollapsed = false,
     onToggleSidebar,
 }: EditorTopBarProps) {
+    const router = useRouter();
     const tab: Tab = isAgenticMode ? "Agentic Mode" : "Manual";
-    const [currentWorkspace, setCurrentWorkspace] = useState(initialWorkspace);
-    const [currentProject, setCurrentProject] = useState(initialProject);
     const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-    const [settingsOpen, setSettingsOpen] = useState(false);
-    const [settingsSection, setSettingsSection] = useState<SettingsSection>("Profile");
+    const [accountOpen, setAccountOpen] = useState(false);
+    const [createWorkspaceOpen, setCreateWorkspaceOpen] = useState(false);
+    const [createSandboxOpen, setCreateSandboxOpen] = useState(false);
+    const [switching, setSwitching] = useState(false);
+    const [actionError, setActionError] = useState<string | null>(null);
     const accountMenuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -479,21 +458,43 @@ export default function Toolbar({
         };
     }, [accountMenuOpen]);
 
-    const pickWorkspace = (v: string) => {
-        setCurrentWorkspace(v);
-        onSelectWorkspace?.(v);
+    const workspaceItems = workspaces.map((item) => ({ id: item.id, label: item.name }));
+    const sandboxItems = (sandboxes.length > 0 ? sandboxes : project ? [project] : []).map(
+        (item) => ({ id: item, label: item }),
+    );
+
+    const selectWorkspace = async (id: string) => {
+        if (id === workspace.id || switching) return;
+        const target = workspaces.find((item) => item.id === id);
+        if (!target) return;
+
+        setSwitching(true);
+        setActionError(null);
+        try {
+            await apiFetch("/v1/auth/session/active-organization", {
+                method: "POST",
+                body: { organizationId: id },
+            });
+            router.push(`/app/workspace/${encodeURIComponent(target.slug)}`);
+            router.refresh();
+        } catch (error) {
+            setActionError(errorMessage(error));
+        } finally {
+            setSwitching(false);
+        }
     };
-    const pickSandbox = (v: string) => {
-        setCurrentProject(v);
-        onSelectSandbox?.(v);
-    };
-    const createWorkspace = () => {
-        if (onCreateWorkspace) onCreateWorkspace();
-        else console.log("TODO: hook up workspace creation");
-    };
-    const createSandbox = () => {
-        if (onCreateSandbox) onCreateSandbox();
-        else console.log("TODO: hook up sandbox creation");
+
+    const signOut = async () => {
+        setAccountMenuOpen(false);
+        setAccountOpen(false);
+        try {
+            await apiFetch("/v1/auth/sign-out", { method: "POST" });
+        } catch {
+            // The web-owned session cookie is cleared regardless.
+        }
+        await fetch("/api/auth/session", { method: "DELETE" });
+        router.push("/sign-in");
+        router.refresh();
     };
 
     return (
@@ -508,48 +509,72 @@ export default function Toolbar({
                         {sidebarCollapsed ? <PanelRight /> : <PanelLeft />}
                     </IconButton>
 
-                    <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center gap-1.5 whitespace-nowrap xl:flex-none">
-                        <span className="hidden font-semibold text-[var(--jetic-muted)] sm:inline">jetic</span>
+                    <nav
+                        aria-label="Breadcrumb"
+                        className="flex min-w-0 flex-1 items-center gap-1.5 whitespace-nowrap xl:flex-none"
+                    >
+                        <span className="hidden font-semibold text-[var(--jetic-muted)] sm:inline">
+                            jetic
+                        </span>
                         <span className="hidden text-[var(--jetic-ring)] sm:inline">/</span>
                         <Switcher
                             label="Switch workspace"
-                            value={currentWorkspace}
-                            items={workspaces}
-                            onSelect={pickWorkspace}
-                            onCreate={createWorkspace}
+                            valueId={workspace.id}
+                            items={workspaceItems}
+                            onSelect={(id) => void selectWorkspace(id)}
+                            onCreate={() => setCreateWorkspaceOpen(true)}
                             createLabel="Create new workspace"
                             searchPlaceholder="Search workspaces…"
+                            disabled={switching}
                         />
-                        {isSandboxRoute && (
+                        {isSandboxRoute && sandboxItems.length > 0 && (
                             <>
                                 <span className="text-[var(--jetic-ring)]">/</span>
                                 <Switcher
                                     label="Switch sandbox"
-                                    value={currentProject}
-                                    items={sandboxes}
-                                    onSelect={pickSandbox}
-                                    onCreate={createSandbox}
+                                    valueId={project}
+                                    items={sandboxItems}
+                                    onSelect={(id) => onSelectSandbox?.(id)}
+                                    onCreate={() => setCreateSandboxOpen(true)}
                                     createLabel="Create new sandbox"
                                     searchPlaceholder="Search sandboxes…"
                                 />
                             </>
                         )}
+                        {switching && (
+                            <span
+                                className="h-3 w-3 animate-spin rounded-full border border-white/25 border-t-white"
+                                aria-label="Switching workspace"
+                            />
+                        )}
                     </nav>
 
-                    {/* Center tabs — roomy screens */}
+                    {/* Center tabs — sandbox routes on roomy screens */}
                     {isSandboxRoute && (
-                        <div className="flex-1 visible justify-center lg:flex">
-                            <ViewTabs tab={tab} onTabChange={(value) => onModeChange?.(value)} className="hidden flex w-fit justify-center lg:flex" />
+                        <div className="flex-1 justify-center lg:flex">
+                            <ViewTabs
+                                tab={tab}
+                                onTabChange={(value) => onModeChange?.(value)}
+                                className="hidden lg:flex"
+                            />
                         </div>
                     )}
-                    {/* Inline menus — wide screens */}
-                   
 
-                    <div className={`flex shrink-0 items-center gap-2 ${!isSandboxRoute ? "ml-auto" : ""}`}>
+                    {/* Workspace menus — wide screens */}
+                    {!isSandboxRoute && (
+                        <ProductMenus
+                            workspaceSlug={workspace.slug}
+                            className="ml-auto hidden items-center gap-1 xl:flex"
+                        />
+                    )}
+
+                    <div
+                        className={`flex shrink-0 items-center gap-2 ${isSandboxRoute ? "ml-auto" : ""}`}
+                    >
                         {!isSandboxRoute && (
                             <button
                                 type="button"
-                                onClick={createSandbox}
+                                onClick={() => setCreateSandboxOpen(true)}
                                 className="flex h-8 items-center gap-1.5 rounded-lg bg-white px-3 text-[13px] font-medium text-black transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
                             >
                                 <PlusIcon className="h-4 w-4" />
@@ -563,12 +588,15 @@ export default function Toolbar({
                                 aria-haspopup="menu"
                                 aria-expanded={accountMenuOpen}
                                 onClick={() => setAccountMenuOpen((open) => !open)}
+                                title={`${user.name} · ${user.email}`}
                                 className="flex h-7 items-center gap-2 rounded-full border border-white/10 pl-1 pr-2 transition-colors hover:bg-[var(--jetic-well)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
                             >
-                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[11px] font-semibold text-black">
-                                    {userName.charAt(0).toUpperCase()}
+                                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white text-[11px] font-semibold text-black">
+                                    {(user.name.charAt(0) || user.email.charAt(0)).toUpperCase()}
                                 </span>
-                                <span className="hidden max-w-[120px] truncate text-[var(--jetic-emphasis)] sm:inline">{userName}</span>
+                                <span className="max-w-[92px] truncate text-[var(--jetic-emphasis)] sm:max-w-[180px]">
+                                    {user.email}
+                                </span>
                                 <span className="text-[var(--jetic-muted)]">
                                     <ChevronDown />
                                 </span>
@@ -576,44 +604,81 @@ export default function Toolbar({
                             {accountMenuOpen && (
                                 <div
                                     role="menu"
-                                    className="jetic-menu absolute right-0 top-[calc(100%+8px)] z-40 w-48 p-1"
+                                    className="jetic-menu absolute right-0 top-[calc(100%+8px)] z-40 w-60 p-1"
                                 >
-                                    {(["Profile", "Settings"] as const).map((item) => (
-                                        <button
-                                            key={item}
-                                            type="button"
-                                            role="menuitem"
-                                            onClick={() => {
-                                                if (item === "Profile") setSettingsSection("Profile");
-                                                setSettingsOpen(true);
-                                                setAccountMenuOpen(false);
-                                            }}
-                                            className="jetic-menu-item"
-                                        >
-                                            {item}
-                                        </button>
-                                    ))}
+                                    <div className="border-b border-white/10 px-2.5 py-2">
+                                        <p className="truncate text-[13px] font-medium text-white">
+                                            {user.name}
+                                        </p>
+                                        <p className="jetic-muted truncate text-[12px]">{user.email}</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={() => {
+                                            setAccountOpen(true);
+                                            setAccountMenuOpen(false);
+                                        }}
+                                        className="jetic-menu-item mt-1"
+                                    >
+                                        Account settings
+                                    </button>
+                                    <button
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={() => void signOut()}
+                                        className="jetic-menu-item"
+                                    >
+                                        Sign out
+                                    </button>
                                 </div>
                             )}
                         </div>
                     </div>
                 </div>
 
+                {actionError && (
+                    <div
+                        role="alert"
+                        className="border-t border-red-500/20 bg-red-500/10 px-3 py-1.5 text-[12px] text-red-300"
+                    >
+                        {actionError}
+                    </div>
+                )}
+
                 {/* Row 2 — scrollable overflow strip for smaller screens */}
                 <div className="flex items-center gap-2 overflow-x-auto border-t border-white/10 px-2 py-1.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:hidden">
                     {isSandboxRoute && (
-                        <ViewTabs tab={tab} onTabChange={(value) => onModeChange?.(value)} className="flex lg:hidden" />
+                        <ViewTabs
+                            tab={tab}
+                            onTabChange={(value) => onModeChange?.(value)}
+                            className="flex lg:hidden"
+                        />
                     )}
-                    <ProductMenus className="flex shrink-0 items-center gap-1" />
+                    <ProductMenus
+                        workspaceSlug={workspace.slug}
+                        className="flex shrink-0 items-center gap-1"
+                    />
                 </div>
             </header>
-            <SettingsDialog
-                open={settingsOpen}
-                section={settingsSection}
-                userName={userName}
-                onSectionChange={setSettingsSection}
-                onClose={() => setSettingsOpen(false)}
+
+            <AccountDialog
+                open={accountOpen}
+                user={user}
+                onSignOut={() => void signOut()}
+                onClose={() => setAccountOpen(false)}
             />
+
+            {createWorkspaceOpen && (
+                <CreateWorkspaceDialog onClose={() => setCreateWorkspaceOpen(false)} />
+            )}
+
+            {createSandboxOpen && (
+                <CreateSandboxDialog
+                    workspaceSlug={workspace.slug}
+                    onClose={() => setCreateSandboxOpen(false)}
+                />
+            )}
         </div>
     );
 }
