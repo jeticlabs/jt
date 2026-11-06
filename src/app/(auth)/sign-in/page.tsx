@@ -11,6 +11,7 @@ import {
   verifyEmailCode,
 } from "@/features/auth/auth.api";
 import { postAuthDestination } from "@/features/auth/redirect";
+import { useResendCountdown } from "@/features/auth/use-resend-countdown";
 
 
 const GoogleIcon = () => (
@@ -28,6 +29,7 @@ export default function SignIn() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [codeResent, setCodeResent] = useState(false);
+  const resendCountdown = useResendCountdown();
   const navigate = useRouter();
   const handleGoogle = () => {
     // TODO: hook up Google OAuth
@@ -47,6 +49,7 @@ export default function SignIn() {
       setStatus("idle");
       setCodeResent(false);
       setStep("code");
+      resendCountdown.start();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to send a code.");
     } finally {
@@ -80,6 +83,7 @@ export default function SignIn() {
       await resendEmailCode(email);
       setStatus("idle");
       setCodeResent(true);
+      resendCountdown.start();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to resend the code.");
     } finally {
@@ -91,6 +95,7 @@ export default function SignIn() {
     setStatus("idle");
     setErrorMessage(null);
     setCodeResent(false);
+    resendCountdown.reset();
     setStep("email");
   };
 
@@ -190,6 +195,12 @@ export default function SignIn() {
               autoFocus
             />
 
+            <p className="jetic-muted mt-4 min-h-4 text-center text-[12px] tabular-nums">
+              {resendCountdown.active
+                ? `Resend code in ${resendCountdown.label}`
+                : "You can request a new code."}
+            </p>
+
             {errorMessage && (
               <p role="alert" className="mt-4 text-[14px] text-[#ff3b30]">
                 {errorMessage}
@@ -210,8 +221,8 @@ export default function SignIn() {
             <button
               type="button"
               onClick={handleResendCode}
-              disabled={isLoading}
-              className="jetic-muted mt-6 text-[14px] font-medium hover:text-white hover:underline disabled:opacity-50"
+              disabled={isLoading || resendCountdown.active}
+              className="jetic-muted mt-6 text-[14px] font-medium hover:text-white hover:underline disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isLoading ? "Sending code..." : "Resend code"}
             </button>
