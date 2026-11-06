@@ -1,5 +1,5 @@
-import { ProductLoader } from "@/components/ui/product-loader";
+import { WorkspaceContentSkeleton } from "@/components/ui/skeleton";
 
 export default function WorkspaceLoading() {
-  return <ProductLoader label="Loading workspace" fullScreen={false} />;
+  return <WorkspaceContentSkeleton />;
 }

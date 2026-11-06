@@ -43,6 +43,18 @@ body {
   --jetic-faint: #555555;
   --jetic-emphasis: #ededed;
   --jetic-ring: #4a4a4a;
+  --jetic-link: #5b9dff;
+  --jetic-skeleton: rgb(255 255 255 / 0.06);
+  --jetic-skeleton-highlight: rgb(255 255 255 / 0.13);
+}
+
+@keyframes jetic-shimmer {
+  0% {
+    background-position: 150% 0;
+  }
+  100% {
+    background-position: -150% 0;
+  }
 }
 
 @layer components {
@@ -69,6 +81,25 @@ body {
     overflow: hidden;
     border-radius: 12px;
     border: 1px solid rgb(255 255 255 / 0.1);
+  }
+
+  .jetic-shimmer {
+    background-image: linear-gradient(
+      90deg,
+      var(--jetic-skeleton) 25%,
+      var(--jetic-skeleton-highlight) 50%,
+      var(--jetic-skeleton) 75%
+    );
+    background-size: 200% 100%;
+    animation: jetic-shimmer 1.6s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .jetic-shimmer {
+      animation: none;
+      background-image: none;
+      background-color: var(--jetic-skeleton);
+    }
   }
 
   .jetic-input {

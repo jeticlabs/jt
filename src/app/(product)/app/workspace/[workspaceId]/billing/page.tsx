@@ -153,7 +153,7 @@ function OutlineButton({
     <button
       type="button"
       disabled={disabled}
-      className={`inline-flex h-8 items-center justify-center rounded-lg border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
+      className={`inline-flex h-8 items-center justify-center rounded-md border px-3 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
         disabled
           ? "cursor-not-allowed border-white/10 bg-white/[0.04] text-[var(--jetic-faint)]"
           : "border-white/10 bg-[var(--jetic-recess)] text-white hover:bg-[var(--jetic-well)]"
@@ -168,7 +168,7 @@ function PrimaryButton({ children }: { children: ReactNode }) {
   return (
     <button
       type="button"
-      className="inline-flex h-8 items-center justify-center rounded-lg bg-white px-3 text-sm font-medium text-black transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+      className="inline-flex h-8 items-center justify-center rounded-md bg-white px-3.5 text-[12px] font-medium text-black transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
     >
       {children}
     </button>
@@ -203,7 +203,7 @@ function FeatureColumn({ items }: { items: Feature[] }) {
       {items.map((f, i) => (
         <li
           key={f.label}
-          className={`flex h-9 items-center justify-between gap-3 rounded-lg px-3 text-[13px] font-medium text-[var(--jetic-emphasis)] ${
+          className={`flex h-9 items-center justify-between gap-3 rounded-lg px-3 text-[12.5px] font-medium text-[var(--jetic-emphasis)] ${
             i % 2 === 0 ? "bg-white/[0.03]" : ""
           }`}
         >
@@ -212,7 +212,7 @@ function FeatureColumn({ items }: { items: Feature[] }) {
             <span className="truncate">{f.label}</span>
           </span>
           {f.note ? (
-            <span className="shrink-0 text-xs font-medium text-white">
+            <span className="shrink-0 text-[11px] font-medium text-white">
               {f.note}
             </span>
           ) : (
@@ -228,17 +228,26 @@ function FeatureColumn({ items }: { items: Feature[] }) {
 
 export default function BillingPage() {
   return (
-    <main className="jetic-surface min-h-full w-full px-4 py-6 text-white antialiased">
-      <div className="mx-auto flex w-full max-w-[916px] flex-col gap-4">
+    <main className="jetic-surface min-h-full w-full bg-[var(--jetic-well)] px-5 pb-16 pt-5 text-white antialiased sm:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-4">
+        <header>
+          <h1 className="text-[24px] font-semibold tracking-tight text-white">
+            Billing &amp; Usage
+          </h1>
+          <p className="jetic-muted mt-1 text-[13px]">
+            Manage your plan, usage, and spending.
+          </p>
+        </header>
+
         {/* Hobby Plan */}
-        <section className="jetic-card bg-[var(--jetic-recess)]">
+        <section className="jetic-card rounded-lg bg-[var(--jetic-bg)]">
           <div className="p-5">
-            <header className="flex items-center justify-between gap-4">
+            <header className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <h1 className="text-xl font-semibold tracking-tight">
+                <h2 className="text-[18px] font-semibold tracking-tight">
                   Hobby Plan
-                </h1>
-                <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs font-medium text-[var(--jetic-emphasis)]">
+                </h2>
+                <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[11px] font-medium text-[var(--jetic-emphasis)]">
                   Active
                 </span>
               </div>
@@ -252,8 +261,8 @@ export default function BillingPage() {
               <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-black">
                 Pro
               </span>
-              <h2 className="mt-3 text-base font-semibold">Upgrade to Pro</h2>
-              <p className="mt-3 max-w-md text-sm leading-6 text-[var(--jetic-muted)]">
+              <h3 className="mt-3 text-[14px] font-semibold">Upgrade to Pro</h3>
+              <p className="mt-2 max-w-md text-[12.5px] leading-5 text-[var(--jetic-muted)]">
                 Unlock on-demand usage, collaboration, and faster builds.
                 <br />
                 Get started with $20 in credit.
@@ -265,7 +274,7 @@ export default function BillingPage() {
               <FeatureColumn items={rightFeatures} />
             </div>
 
-            <p className="mt-6 text-[13px] leading-5 text-[var(--jetic-muted)]">
+            <p className="mt-6 text-[12.5px] leading-5 text-[var(--jetic-muted)]">
               Upgrading to paid Pro enables Elastic for eligible projects by
               default. Machine size is selected automatically. Build CPU-minute
               usage can vary and may incur charges.{" "}
@@ -278,7 +287,7 @@ export default function BillingPage() {
             </p>
           </div>
 
-          <div className="flex items-center justify-between gap-4 border-t border-white/10 px-5 py-3 text-sm text-[var(--jetic-muted)]">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/10 bg-[var(--jetic-well)] px-5 py-3 text-[12px] text-[var(--jetic-muted)]">
             <span className="inline-flex items-center gap-1.5">
               Learn more about{" "}
               <a
@@ -294,13 +303,13 @@ export default function BillingPage() {
         </section>
 
         {/* Spend Management */}
-        <section className="jetic-card bg-[var(--jetic-recess)] p-5">
-          <header className="flex items-start justify-between gap-6">
+        <section className="jetic-card rounded-lg bg-[var(--jetic-bg)] p-5">
+          <header className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h2 className="text-xl font-semibold tracking-tight">
+              <h2 className="text-[18px] font-semibold tracking-tight">
                 Spend Management
               </h2>
-              <p className="mt-3 max-w-[560px] text-[13px] leading-5 text-[var(--jetic-muted)]">
+              <p className="mt-1 max-w-[560px] text-[12.5px] leading-5 text-[var(--jetic-muted)]">
                 Manage budgets for on-demand charges once the included credit is
                 spent. Alerts fire at 50%, 75%, and 100%. Spend resets at the
                 end of each billing period.{" "}
@@ -316,8 +325,8 @@ export default function BillingPage() {
             <OutlineButton disabled>Add Budget</OutlineButton>
           </header>
 
-          <div className="mt-5 overflow-x-auto rounded-xl border border-white/10">
-            <table className="w-full min-w-[560px] border-collapse text-left text-[13px]">
+          <div className="mt-4 overflow-x-auto rounded-lg border border-white/10">
+            <table className="w-full min-w-[560px] border-collapse text-left text-[12.5px]">
               <thead>
                 <tr className="border-b border-white/10 text-[var(--jetic-faint)]">
                   <th className="w-[30%] px-4 py-3 font-normal">Name</th>

@@ -4,11 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Check, ChevronsUpDown, Plus, PlusIcon, X } from "lucide-react";
+import { Check, ChevronsUpDown, Plus, PlusIcon } from "lucide-react";
 
 import { inter } from "@/app/fonts";
 import type { OrganizationRole } from "@/features/workspace/types";
+import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch, errorMessage } from "@/lib/api/browser";
+import { AccountDialog } from "./account-dialog";
 import { CreateSandboxDialog } from "./create-sandbox-dialog";
 import { CreateWorkspaceDialog } from "./create-workspace-dialog";
 
@@ -170,92 +172,6 @@ function ProductMenus({
                     </Link>
                 );
             })}
-        </div>
-    );
-}
-
-/* ---------- Account dialog ---------- */
-
-function AccountDialog({
-    open,
-    user,
-    onSignOut,
-    onClose,
-}: {
-    open: boolean;
-    user: { name: string; email: string };
-    onSignOut: () => void;
-    onClose: () => void;
-}) {
-    useEffect(() => {
-        if (!open) return;
-        const onKey = (event: KeyboardEvent) => {
-            if (event.key === "Escape") onClose();
-        };
-        document.addEventListener("keydown", onKey);
-        return () => document.removeEventListener("keydown", onKey);
-    }, [open, onClose]);
-
-    if (!open) return null;
-
-    return (
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-            onMouseDown={(event) => {
-                if (event.target === event.currentTarget) onClose();
-            }}
-        >
-            <section
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="account-title"
-                className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-[#111111] text-white shadow-2xl"
-            >
-                <div className="flex items-start justify-between gap-4 border-b border-white/10 p-5">
-                    <div>
-                        <h2 id="account-title" className="text-lg font-semibold">
-                            Account
-                        </h2>
-                        <p className="jetic-muted mt-1 text-[13px]">
-                            The account signed in to this browser.
-                        </p>
-                    </div>
-                    <button
-                        type="button"
-                        aria-label="Close"
-                        onClick={onClose}
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--jetic-muted)] hover:bg-white/10 hover:text-white"
-                    >
-                        <X size={16} />
-                    </button>
-                </div>
-                <dl className="flex flex-col gap-4 p-5 text-sm">
-                    <div>
-                        <dt className="jetic-muted text-[12px]">Name</dt>
-                        <dd className="mt-1 text-white">{user.name}</dd>
-                    </div>
-                    <div>
-                        <dt className="jetic-muted text-[12px]">Email</dt>
-                        <dd className="mt-1 break-all text-white">{user.email}</dd>
-                    </div>
-                </dl>
-                <div className="flex items-center justify-between gap-2 border-t border-white/10 p-4">
-                    <button
-                        type="button"
-                        onClick={onSignOut}
-                        className="jetic-btn h-9 px-3.5 text-[13px]"
-                    >
-                        Sign out
-                    </button>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="jetic-btn-light h-9 px-3.5 text-[13px]"
-                    >
-                        Done
-                    </button>
-                </div>
-            </section>
         </div>
     );
 }
@@ -542,10 +458,9 @@ export default function Toolbar({
                             </>
                         )}
                         {switching && (
-                            <span
-                                className="h-3 w-3 animate-spin rounded-full border border-white/25 border-t-white"
-                                aria-label="Switching workspace"
-                            />
+                            <span role="status" aria-label="Switching workspace">
+                                <Skeleton className="h-3 w-14 rounded-full" />
+                            </span>
                         )}
                     </nav>
 

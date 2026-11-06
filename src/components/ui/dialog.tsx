@@ -25,7 +25,7 @@ export function Dialog({
     >
       <div
         className={cn(
-          "w-full max-w-md rounded-2xl bg-white p-6 dark:bg-zinc-900",
+          "w-full max-w-2xl rounded bg-white p-6 dark:bg-zinc-900",
           className
         )}
         onClick={(e) => e.stopPropagation()}

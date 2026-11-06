@@ -25,17 +25,19 @@ function Card({
 }) {
   return (
     <section
-      className={`jetic-card bg-[var(--jetic-recess)] ${danger ? "border-red-500/25" : ""}`}
+      className={`jetic-card rounded-lg bg-[var(--jetic-bg)] ${danger ? "border-red-500/25" : ""}`}
     >
       <div className="p-5">
-        <h2 className="text-xl font-semibold tracking-tight text-white">{title}</h2>
+        <h2 className="text-[18px] font-semibold tracking-tight text-white">{title}</h2>
         {description && (
-          <div className="mt-3 text-sm leading-6 text-[var(--jetic-muted)]">{description}</div>
+          <div className="mt-1 text-[12.5px] leading-5 text-[var(--jetic-muted)]">
+            {description}
+          </div>
         )}
-        {children && <div className="mt-5">{children}</div>}
+        {children && <div className="mt-4">{children}</div>}
       </div>
       {footer && (
-        <div className="flex min-h-[3.5rem] flex-wrap items-center justify-between gap-4 border-t border-white/10 px-5 py-3 text-sm text-[var(--jetic-muted)]">
+        <div className="flex min-h-[3rem] flex-wrap items-center justify-between gap-4 border-t border-white/10 bg-[var(--jetic-well)] px-5 py-3 text-[11.5px] text-[var(--jetic-muted)]">
           {footer}
         </div>
       )}
@@ -59,13 +61,12 @@ function Button({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`inline-flex h-8 shrink-0 items-center justify-center rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
-        disabled
-          ? "cursor-not-allowed bg-white/[0.06] text-[var(--jetic-faint)]"
-          : danger
-            ? "bg-red-500/90 text-white hover:bg-red-500"
-            : "bg-white text-black hover:bg-white/90"
-      }`}
+      className={`inline-flex h-8 shrink-0 items-center justify-center rounded-md px-3 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${disabled
+        ? "cursor-not-allowed bg-white/[0.06] text-[var(--jetic-faint)]"
+        : danger
+          ? "bg-red-500/90 text-white hover:bg-red-500"
+          : "bg-white text-black hover:bg-white/90"
+        }`}
     >
       {children}
     </button>
@@ -73,7 +74,7 @@ function Button({
 }
 
 const inputClass =
-  "h-10 w-full max-w-[320px] rounded-xl border border-white/10 bg-[var(--jetic-well)] px-3 text-sm text-white outline-none transition-colors placeholder:text-[var(--jetic-faint)] hover:border-white/20 focus:border-white/40 disabled:cursor-not-allowed disabled:opacity-60";
+  "h-9 w-full max-w-[320px] rounded-md border border-white/10 bg-[var(--jetic-recess)] px-3 text-[12.5px] text-white outline-none transition-colors placeholder:text-[var(--jetic-muted)] hover:border-white/20 focus:border-white/30 disabled:cursor-not-allowed disabled:opacity-60";
 
 /* -------------------------------- Page ---------------------------------- */
 
@@ -205,11 +206,13 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
   };
 
   return (
-    <main className="jetic-surface min-h-full w-full px-4 py-6 text-white antialiased">
-      <div className="mx-auto flex w-full max-w-[916px] flex-col gap-[30px]">
+    <main className="jetic-surface min-h-full w-full bg-[var(--jetic-well)] px-5 pb-16 pt-5 text-white antialiased sm:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-4">
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-[20px] font-semibold tracking-tight">Workspace settings</h1>
+            <h1 className="text-[24px] font-semibold tracking-tight text-white">
+              Workspace settings
+            </h1>
             <p className="jetic-muted mt-1 text-[13px]">
               Manage this workspace&apos;s identity, URL, and plan.
             </p>
@@ -222,7 +225,7 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
         {(error || notice) && (
           <p
             role={error ? "alert" : "status"}
-            className={`text-[13px] ${error ? "text-red-400" : "text-[var(--jetic-emphasis)]"}`}
+            className={`text-[12.5px] ${error ? "text-red-400" : "text-[var(--jetic-emphasis)]"}`}
           >
             {error ?? notice}
           </p>
@@ -282,8 +285,8 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
             </>
           }
         >
-          <div className="flex h-10 w-full max-w-[320px] overflow-hidden rounded-xl border border-white/10 bg-[var(--jetic-well)] focus-within:border-white/40">
-            <span className="flex items-center border-r border-white/10 bg-[var(--jetic-bg)] px-3 text-sm text-[var(--jetic-muted)]">
+          <div className="flex h-9 w-full max-w-[320px] overflow-hidden rounded-md border border-white/10 bg-[var(--jetic-recess)] focus-within:border-white/30">
+            <span className="flex items-center border-r border-white/10 bg-[var(--jetic-bg)] px-3 text-[12.5px] text-[var(--jetic-muted)]">
               jetic.space/
             </span>
             <input
@@ -296,7 +299,7 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
                 setNotice(null);
               }}
               aria-label="Workspace URL"
-              className="min-w-0 flex-1 bg-transparent px-3 text-sm text-white outline-none disabled:cursor-not-allowed disabled:opacity-60"
+              className="min-w-0 flex-1 bg-transparent px-3 text-[12.5px] text-white outline-none disabled:cursor-not-allowed disabled:opacity-60"
             />
           </div>
           {slugDirty && (
@@ -356,13 +359,12 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
                     setError(null);
                     setNotice(null);
                   }}
-                  className={`rounded-xl border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 disabled:cursor-not-allowed ${
-                    selected
-                      ? "border-white/40 bg-white/10"
-                      : "border-white/10 bg-[var(--jetic-well)] hover:border-white/25"
-                  }`}
+                  className={`rounded-lg border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 disabled:cursor-not-allowed ${selected
+                    ? "border-white/40 bg-white/10"
+                    : "border-white/10 bg-[var(--jetic-recess)] hover:border-white/25"
+                    }`}
                 >
-                  <span className="flex items-center gap-2 text-sm font-semibold">
+                  <span className="flex items-center gap-2 text-[12.5px] font-semibold">
                     {option.label}
                     {savedPlan === option.id && (
                       <span className="jetic-muted text-[11px] font-normal">Current</span>
@@ -382,8 +384,8 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
           description="This is your workspace's ID within Jetic."
           footer={<span>Used when interacting with the Jetic API.</span>}
         >
-          <div className="inline-flex h-10 items-center gap-3 rounded-xl border border-white/10 bg-[var(--jetic-well)] px-3">
-            <code className="font-mono text-sm text-white">{workspace.id}</code>
+          <div className="inline-flex h-9 items-center gap-3 rounded-md border border-white/10 bg-[var(--jetic-recess)] px-3">
+            <code className="font-mono text-[12.5px] text-white">{workspace.id}</code>
             <button
               type="button"
               onClick={() => void copyTeamId()}
@@ -461,7 +463,7 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
             aria-labelledby="delete-workspace-title"
             className="w-full max-w-md overflow-hidden rounded-2xl border border-red-500/25 bg-[#111111] text-white shadow-2xl"
           >
-            <div className="border-b border-white/10 p-5">
+            <div className="border-b border-white/10 p-5 w-full">
               <h2 id="delete-workspace-title" className="text-lg font-semibold">
                 Delete {workspace.name}?
               </h2>
@@ -471,7 +473,7 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
               </p>
             </div>
             <div className="p-5">
-              <label htmlFor="delete-confirm" className="jetic-muted mb-2 block text-[12px]">
+              <label htmlFor="delete-confirm" className="jetic-muted mb-1.5 block text-[11px]">
                 Workspace name
               </label>
               <input
@@ -480,7 +482,7 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
                 value={deleteConfirm}
                 onChange={(event) => setDeleteConfirm(event.target.value)}
                 autoFocus
-                className="jetic-input"
+                className={inputClass}
               />
             </div>
             <div className="flex items-center justify-end gap-2 border-t border-white/10 p-4">
@@ -488,7 +490,7 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
                 type="button"
                 onClick={() => setDeleteOpen(false)}
                 disabled={busy === "delete"}
-                className="jetic-btn h-9 px-3.5 text-[13px] disabled:opacity-40"
+                className="inline-flex h-8 items-center justify-center rounded-md border border-white/10 px-3 text-[12px] font-medium text-white transition-colors hover:border-white/20 hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Cancel
               </button>
@@ -496,7 +498,7 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
                 type="button"
                 onClick={() => void deleteWorkspace()}
                 disabled={deleteConfirm !== workspace.name || busy === "delete"}
-                className="inline-flex h-9 items-center rounded-lg bg-red-500/90 px-3.5 text-[13px] font-medium text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex h-8 items-center rounded-md bg-red-500/90 px-3 text-[12px] font-medium text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {busy === "delete" ? "Deleting…" : "Delete workspace"}
               </button>

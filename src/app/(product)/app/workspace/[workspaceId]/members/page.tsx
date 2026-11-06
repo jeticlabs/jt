@@ -32,6 +32,8 @@ export default async function MembersPage({
   return (
     <MembersClient
       organizationId={workspace.id}
+      workspaceSlug={workspace.slug}
+      plan={workspace.plan}
       currentUserId={context.user.id}
       role={workspace.role}
       members={members}

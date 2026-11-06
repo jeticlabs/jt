@@ -32,6 +32,21 @@ async function proxyRequest(
   const requestHeaders: Record<string, string> = {
     accept: request.headers.get("accept") ?? "application/json",
   };
+
+  // The API otherwise sees this Next.js process as the client (::1 locally).
+  // Forward the original client address; the API trusts one proxy hop.
+  const forwardedFor = request.headers
+    .get("x-forwarded-for")
+    ?.split(",")[0]
+    ?.trim();
+  const clientIp =
+    forwardedFor ||
+    request.headers.get("x-real-ip")?.trim() ||
+    request.headers.get("cf-connecting-ip")?.trim();
+  if (clientIp) {
+    requestHeaders["x-forwarded-for"] = clientIp;
+  }
+
   const init: RequestInit = { method: request.method, headers: requestHeaders };
 
   if (request.method !== "GET" && request.method !== "HEAD") {

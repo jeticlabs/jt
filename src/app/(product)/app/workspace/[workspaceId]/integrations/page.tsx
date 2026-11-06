@@ -52,13 +52,13 @@ const INTEGRATIONS: Integration[] = [
 ];
 
 const secondaryButton =
-  "inline-flex h-8 items-center justify-center rounded-lg border border-white/10 px-3 text-[12px] font-medium text-[var(--jetic-emphasis)] transition-colors hover:bg-[var(--jetic-well)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30";
+  "inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-white/10 px-3 text-[12px] font-medium text-[var(--jetic-emphasis)] transition-colors hover:border-white/20 hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30";
 
 function IntegrationCard({ integration }: { integration: Integration }) {
   return (
-    <article className="jetic-card flex flex-col gap-4 bg-[var(--jetic-recess)] p-4">
+    <article className="jetic-card flex flex-col gap-4 rounded-lg bg-[var(--jetic-bg)] p-4">
       <div className="flex items-start gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-[var(--jetic-well)]">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-[var(--jetic-recess)]">
           {integration.icon}
         </span>
         <div className="min-w-0 flex-1">
@@ -93,18 +93,22 @@ function IntegrationCard({ integration }: { integration: Integration }) {
 
 export default function IntegrationsPage() {
   return (
-    <div className="jetic-surface min-h-full w-full px-6 pb-16 pt-6 lg:px-10">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-[20px] font-semibold tracking-tight text-white">Integrations</h1>
-        <p className="jetic-muted text-[13px]">
-          Connect the tools your team already uses to your Jetic workspace.
-        </p>
-      </header>
+    <div className="jetic-surface min-h-full w-full bg-[var(--jetic-well)] px-5 pb-16 pt-5 text-white antialiased sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-[1180px]">
+        <header>
+          <h1 className="text-[24px] font-semibold tracking-tight text-white">
+            Integrations
+          </h1>
+          <p className="jetic-muted mt-1 text-[13px]">
+            Connect the tools your team already uses to your Jetic workspace.
+          </p>
+        </header>
 
-      <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {INTEGRATIONS.map((integration) => (
-          <IntegrationCard key={integration.name} integration={integration} />
-        ))}
+        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {INTEGRATIONS.map((integration) => (
+            <IntegrationCard key={integration.name} integration={integration} />
+          ))}
+        </div>
       </div>
     </div>
   );

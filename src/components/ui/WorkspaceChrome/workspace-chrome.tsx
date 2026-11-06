@@ -10,8 +10,8 @@ import {
 import { useParams, usePathname, useRouter } from "next/navigation";
 
 import Sidebar from "@/components/ui/Sidebar/Sidebar";
-import { SidebarShell } from "@/components/ui/Sidebar/sidebar-shell";
 import WorkspaceSidebar from "@/components/ui/Sidebar/workspace-sidebar";
+import { ToolbarSkeleton } from "@/components/ui/skeleton";
 import Toolbar, {
   type ToolbarUser,
   type ToolbarWorkspace,
@@ -150,19 +150,10 @@ function useWorkspaceId(): string {
 }
 
 function ToolbarFallback() {
-  return (
-    <div
-      aria-hidden="true"
-      className="h-[74px] w-full shrink-0 border-b border-white/10 bg-[var(--jetic-bg)]"
-    />
-  );
+  return <ToolbarSkeleton className="shrink-0" />;
 }
 
 function SidebarFallback() {
   const { collapsed } = useChrome();
-  return (
-    <SidebarShell collapsed={collapsed} aria-label="Loading sidebar">
-      <div className="h-full w-full" />
-    </SidebarShell>
-  );
+  return <Sidebar loading collapsed={collapsed} />;
 }

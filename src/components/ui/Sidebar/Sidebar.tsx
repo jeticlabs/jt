@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
 import type { ReactNode } from "react";
+import { SidebarSkeleton } from "@/components/ui/skeleton";
+
 import { SidebarShell } from "./sidebar-shell";
 
 /* ---------- Icons ---------- */
@@ -204,12 +206,17 @@ function NavRow({
 
 interface SidebarProps {
     collapsed?: boolean;
+    loading?: boolean;
 }
 
-export default function Sidebar({ collapsed = false }: SidebarProps) {
+export default function Sidebar({ collapsed = false, loading = false }: SidebarProps) {
     const [active, setActive] = useState<string>("overview");
     const [expanded, setExpanded] = useState<Set<string>>(new Set(["model"]));
     const [query, setQuery] = useState<string>("");
+
+    if (loading) {
+        return <SidebarSkeleton collapsed={collapsed} />;
+    }
 
     const toggle = (id: string) => {
         setExpanded((prev) => {
