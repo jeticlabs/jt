@@ -270,7 +270,7 @@ const usage = [
 
 function Panel({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`jetic-card bg-[var(--jetic-recess)] ${className}`}>
+    <div className={`jetic-card rounded-lg bg-[var(--jetic-bg)] ${className}`}>
       {children}
     </div>
   );
@@ -286,7 +286,7 @@ function SectionTitle({ children }: { children: ReactNode }) {
 
 function ProjectCard({ p }: { p: Project }) {
   return (
-    <article className="jetic-card flex flex-col gap-3 bg-[var(--jetic-recess)] p-4 transition-colors hover:border-white/20">
+    <article className="jetic-card flex flex-col gap-3 rounded-lg bg-[var(--jetic-bg)] p-4 transition-colors hover:border-white/20">
       <header className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex h-7 w-7 shrink-0 items-center justify-center">
@@ -303,7 +303,7 @@ function ProjectCard({ p }: { p: Project }) {
         </div>
       </header>
       <div className="flex flex-col gap-1.5">
-        <p className="flex items-center gap-1.5 text-[13px] font-semibold text-white">
+        <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-white">
           <span className="shrink-0 text-[var(--jetic-muted)]">
             <CommitIcon />
           </span>
@@ -323,7 +323,7 @@ function ProjectCard({ p }: { p: Project }) {
 /* -------------------------------- Page ---------------------------------- */
 
 const secondaryControl =
-  "border border-white/10 bg-[var(--jetic-recess)] text-[var(--jetic-muted)] transition-colors hover:bg-[var(--jetic-well)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30";
+  "border border-white/10 bg-[var(--jetic-recess)] text-[var(--jetic-muted)] transition-colors hover:border-white/20 hover:bg-white/[0.04] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30";
 
 const primaryControl =
   "bg-white text-black transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40";
@@ -359,18 +359,25 @@ export default function DashboardPage() {
   }, [query]);
 
   return (
-    <main className="jetic-surface min-h-full w-full px-4 py-3">
-      <div className="mx-auto w-full max-w-[1220px]">
+    <main className="jetic-surface min-h-full w-full bg-[var(--jetic-well)] px-5 pb-16 pt-5 text-white antialiased sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-[1180px]">
+        <header>
+          <h1 className="text-[24px] font-semibold tracking-tight text-white">Overview</h1>
+          <p className="jetic-muted mt-1 text-[13px]">
+            Monitor your sandboxes, usage, and workspace activity.
+          </p>
+        </header>
+
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-xl border border-white/10 bg-[var(--jetic-recess)] px-3 text-[var(--jetic-muted)] transition-colors focus-within:border-white/25">
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          <label className="flex h-9 min-w-[200px] flex-1 items-center gap-2 rounded-md border border-white/10 bg-[var(--jetic-recess)] px-3 text-[var(--jetic-muted)] transition-colors focus-within:border-white/20">
             <SearchIcon />
             <input
               ref={searchRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search projects"
-              className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-[var(--jetic-faint)]"
+              className="min-w-0 flex-1 bg-transparent text-[12.5px] text-white outline-none placeholder:text-[var(--jetic-muted)]"
             />
             <kbd className="flex h-5 w-5 items-center justify-center rounded border border-white/10 bg-[var(--jetic-well)] text-[11px] text-[var(--jetic-muted)]">
               /
@@ -380,12 +387,12 @@ export default function DashboardPage() {
           <button
             type="button"
             aria-label="Filter and sort"
-            className={`flex h-10 w-10 items-center justify-center rounded-xl ${secondaryControl}`}
+            className={`flex h-9 w-9 items-center justify-center rounded-md ${secondaryControl}`}
           >
             <FilterIcon />
           </button>
 
-          <div className="flex h-10 items-center overflow-hidden rounded-xl border border-white/10 bg-[var(--jetic-recess)] p-0.5">
+          <div className="flex h-9 items-center overflow-hidden rounded-md border border-white/10 bg-[var(--jetic-recess)] p-0.5">
             {(
               [
                 ["grid", <GridIcon key="g" />, "Grid view"],
@@ -398,7 +405,7 @@ export default function DashboardPage() {
                 aria-label={label}
                 aria-pressed={view === key}
                 onClick={() => setView(key)}
-                className={`flex h-full w-9 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
+                className={`flex h-full w-9 items-center justify-center rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
                   view === key
                     ? "bg-[var(--jetic-well)] text-white"
                     : "text-[var(--jetic-faint)] hover:text-white"
@@ -411,7 +418,7 @@ export default function DashboardPage() {
 
           <button
             type="button"
-            className={`flex h-10 items-center gap-2.5 rounded-xl px-3 text-[13px] font-medium text-white ${secondaryControl}`}
+            className={`flex h-9 items-center gap-2.5 rounded-md px-3 text-[12.5px] font-medium text-white ${secondaryControl}`}
           >
             <span className="flex items-center -space-x-1" aria-hidden="true">
               <span className="h-4 w-4 rounded-full border border-white/20 bg-[var(--jetic-recess)]" />
@@ -425,30 +432,30 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:gap-[17px]">
+        <div className="mt-5 flex flex-col gap-6 lg:flex-row lg:gap-4">
           {/* Sidebar */}
           <aside className="flex w-full shrink-0 flex-col gap-6 lg:w-[305px]">
             <section>
               <SectionTitle>Usage</SectionTitle>
-              <Panel className="relative p-3 pb-4">
-                <div className="mb-3 flex items-center justify-between z-0">
-                  <span className="text-[13px] font-medium">Last 30 days</span>
+              <Panel className="relative p-4">
+                <div className="z-0 mb-3 flex items-center justify-between">
+                  <span className="text-[12.5px] font-medium">Last 30 days</span>
                   <button
                     type="button"
-                    className={`h-6 rounded-lg px-2 text-xs font-medium ${primaryControl}`}
+                    className={`h-7 rounded-md px-2.5 text-[11.5px] font-medium ${primaryControl}`}
                   >
                     Upgrade
                   </button>
                 </div>
                 <ul
-                  className={`flex flex-col gap-1 overflow-hidden  z-0 ${
+                  className={`z-0 flex flex-col gap-1 overflow-hidden ${
                     usageOpen ? "" : "max-h-[128px]"
                   }`}
                 >
                   {usage.map((u) => (
                     <li
                       key={u.label}
-                      className="flex h-8 shrink-0 items-center justify-between gap-2 rounded-lg bg-[var(--jetic-well)] px-2 text-xs"
+                      className="flex h-8 shrink-0 items-center justify-between gap-2 rounded-md bg-[var(--jetic-recess)] px-2.5 text-[11.5px]"
                     >
                       <span className="flex items-center gap-2 text-[var(--jetic-emphasis)]">
                         <UsageRing fraction={u.fraction} />
@@ -475,18 +482,18 @@ export default function DashboardPage() {
 
             <section>
               <SectionTitle>Alerts</SectionTitle>
-              <Panel className="flex flex-col items-center gap-3 px-6 py-6 text-center">
+              <Panel className="flex flex-col items-center gap-3 px-5 py-6 text-center">
                 <span className="flex h-6 w-6 items-center justify-center rounded-md border border-white/10 text-[var(--jetic-muted)]">
                   <BellIcon />
                 </span>
-                <p className="jetic-muted text-xs leading-5">
+                <p className="jetic-muted text-[12px] leading-5">
                   Get notified when usage or
                   <br />
                   errors spike across your projects.
                 </p>
                 <button
                   type="button"
-                  className={`h-8 rounded-lg px-3 text-[13px] font-medium ${secondaryControl}`}
+                  className={`h-8 rounded-md px-3 text-[12px] font-medium ${secondaryControl}`}
                 >
                   Upgrade to Pro
                 </button>
@@ -495,11 +502,11 @@ export default function DashboardPage() {
 
             <section>
               <SectionTitle>Recent Previews</SectionTitle>
-              <Panel className="flex flex-col items-center gap-3 px-6 py-8 text-center">
+              <Panel className="flex flex-col items-center gap-3 px-5 py-8 text-center">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full border border-white/10 text-[var(--jetic-muted)]">
                   <EyeIcon />
                 </span>
-                <p className="jetic-muted text-xs leading-5">
+                <p className="jetic-muted text-[12px] leading-5">
                   Preview deployments that you have
                   <br />
                   recently visited or created will appear here.
@@ -518,7 +525,7 @@ export default function DashboardPage() {
               }`}
             >
               {repoBannerOpen && !query && (
-                <div className="relative rounded-xl border border-dashed border-white/15 bg-[var(--jetic-recess)] p-3">
+                <div className="relative rounded-lg border border-dashed border-white/15 bg-[var(--jetic-bg)] p-4">
                   <button
                     type="button"
                     aria-label="Dismiss"
@@ -539,7 +546,7 @@ export default function DashboardPage() {
                   </div>
                   <button
                     type="button"
-                    className={`h-8 w-full rounded-lg text-[13px] font-medium ${primaryControl}`}
+                    className={`h-8 w-full rounded-md text-[12px] font-medium ${primaryControl}`}
                   >
                     Import
                   </button>
@@ -549,19 +556,17 @@ export default function DashboardPage() {
               {filtered.map((p) => (
                 <ProjectCard key={p.name} p={p} />
               ))}
-
-             
             </div>
 
             {filtered.length === 0 && (
-              <p className="jetic-muted py-10 text-center text-sm">
+              <p className="jetic-muted py-10 text-center text-[12.5px]">
                 No projects match &ldquo;{query}&rdquo;.
               </p>
             )}
 
             <button
               type="button"
-              className={`mt-4 h-10 w-full rounded-xl text-[13px] font-medium ${secondaryControl}`}
+              className={`mt-4 h-8 w-full rounded-md text-[12px] font-medium ${secondaryControl}`}
             >
               Show More
             </button>
