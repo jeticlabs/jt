@@ -10,6 +10,7 @@ import {
   requestEmailCode,
   resendEmailCode,
   verifyEmailCode,
+  verifyPassword,
 } from "@/features/auth/auth.api";
 import { postAuthDestination } from "@/features/auth/redirect";
 import { useResendCountdown } from "@/features/auth/use-resend-countdown";
@@ -21,7 +22,7 @@ const GitHubIcon = () => (
   </svg>
 );
 
-type Step = "email" | "code";
+type Step = "email" | "code" | "password";
 
 export default function SignIn() {
   const [email, setEmail] = useState<string>("");
@@ -30,18 +31,24 @@ export default function SignIn() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [codeResent, setCodeResent] = useState(false);
+  const [challengeToken, setChallengeToken] = useState<string | null>(null);
+  const [password, setPassword] = useState("");
   const resendCountdown = useResendCountdown();
   const navigate = useRouter();
 
   useEffect(() => {
     const error = new URLSearchParams(window.location.search).get("error");
-    if (error === "github_not_configured") {
-      setErrorMessage("GitHub sign-in is not configured yet. Please use email instead.");
-    } else if (error === "github_email") {
-      setErrorMessage("GitHub did not provide a verified email address. Please use email instead.");
-    } else if (error === "github_oauth") {
-      setErrorMessage("GitHub sign-in could not be completed. Please try again.");
-    }
+    const message =
+      error === "github_not_configured"
+        ? "GitHub sign-in is not configured yet. Please use email instead."
+        : error === "github_email"
+          ? "GitHub did not provide a verified email address. Please use email instead."
+          : error === "github_oauth"
+            ? "GitHub sign-in could not be completed. Please try again."
+            : null;
+    if (!message) return;
+    const timer = window.setTimeout(() => setErrorMessage(message), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const handleGitHub = () => {
@@ -75,13 +82,39 @@ export default function SignIn() {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const token = await verifyEmailCode(email, code);
-      await establishBrowserSession(token);
+      const result = await verifyEmailCode(email, code);
+      if (result.requiresPassword) {
+        setChallengeToken(result.challengeToken);
+        setPassword("");
+        setStatus("idle");
+        setStep("password");
+        return;
+      }
+      await establishBrowserSession(result.token);
       setStatus("success");
       window.setTimeout(() => navigate.push(postAuthDestination()), 700);
     } catch (error) {
       setStatus("error");
       setErrorMessage(error instanceof Error ? error.message : "Unable to verify that code.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePasswordSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!challengeToken || !password || isLoading) return;
+
+    setIsLoading(true);
+    setErrorMessage(null);
+    try {
+      const token = await verifyPassword(challengeToken, password);
+      await establishBrowserSession(token);
+      setStatus("success");
+      window.setTimeout(() => navigate.push(postAuthDestination()), 700);
+    } catch (error) {
+      setStatus("error");
+      setErrorMessage(error instanceof Error ? error.message : "Incorrect password.");
     } finally {
       setIsLoading(false);
     }
@@ -108,6 +141,8 @@ export default function SignIn() {
     setStatus("idle");
     setErrorMessage(null);
     setCodeResent(false);
+    setChallengeToken(null);
+    setPassword("");
     resendCountdown.reset();
     setStep("email");
   };
@@ -123,11 +158,18 @@ export default function SignIn() {
               Welcome to Jetic
               <div className="jetic-muted flex">The agentic api workspace</div>
             </>
-          ) : (
+          ) : step === "code" ? (
             <>
               Verify your email
               <span className="jetic-muted mt-2 block text-[15px] font-normal leading-6">
                 We sent a 6-digit code to <span className="text-white">{email}</span>
+              </span>
+            </>
+          ) : (
+            <>
+              Enter your password
+              <span className="jetic-muted mt-2 block text-[15px] font-normal leading-6">
+                Password verification is required for <span className="text-white">{email}</span>.
               </span>
             </>
           )}
@@ -180,7 +222,7 @@ export default function SignIn() {
               </p>
             )}
           </div>
-        ) : (
+        ) : step === "code" ? (
           <div className="mt-10 flex w-full flex-col items-center">
             <CodeSlots
               length={6}
@@ -247,6 +289,47 @@ export default function SignIn() {
               className="jetic-muted mt-3 text-[14px] font-medium hover:text-white hover:underline"
             >
               Use a different email
+            </button>
+          </div>
+        ) : (
+          <div className="mt-10 flex w-full flex-col items-center">
+            <form onSubmit={handlePasswordSubmit} className="flex w-full flex-col gap-4">
+              <input
+                type="password"
+                value={password}
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  setErrorMessage(null);
+                }}
+                placeholder="Password"
+                autoComplete="current-password"
+                autoFocus
+                disabled={isLoading}
+                className="jetic-input"
+              />
+              <button type="submit" className="jetic-btn" disabled={isLoading || !password}>
+                {isLoading ? "Checking password..." : "Continue"}
+              </button>
+            </form>
+
+            {errorMessage && (
+              <p role="alert" className="mt-4 text-[14px] text-[#ff3b30]">
+                {errorMessage}
+              </p>
+            )}
+            {status === "success" && (
+              <p role="status" className="mt-4 text-[14px] text-[#ededed]">
+                Verified. Taking you in…
+              </p>
+            )}
+
+            <button
+              type="button"
+              onClick={backToEmail}
+              disabled={isLoading}
+              className="jetic-muted mt-6 text-[14px] font-medium hover:text-white hover:underline"
+            >
+              Cancel and sign out
             </button>
           </div>
         )}

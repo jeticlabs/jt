@@ -8,7 +8,10 @@ const API_BASE_URL = (
   process.env.NEXT_PUBLIC_JETIC_API_URL || "http://localhost:4000"
 ).replace(/\/+$/, "");
 
-async function postAuth<T>(action: AuthAction | "verify-otp", body: object): Promise<T> {
+async function postAuth<T>(
+  action: AuthAction | "verify-otp" | "verify-password",
+  body: object,
+): Promise<T> {
   const response = await fetch(`${API_BASE_URL}/v1/auth/${action}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -25,9 +28,10 @@ async function postAuth<T>(action: AuthAction | "verify-otp", body: object): Pro
 }
 
 export function githubSignInUrl(next?: string | null): string {
-  const url = new URL(`${API_BASE_URL}/v1/auth/github`);
-  if (next) url.searchParams.set("next", next);
-  return url.toString();
+  const params = new URLSearchParams();
+  if (next) params.set("next", next);
+  const query = params.toString();
+  return `/api/auth/github${query ? `?${query}` : ""}`;
 }
 
 export async function requestEmailCode(action: Exclude<AuthAction, "resend-otp">, email: string): Promise<void> {
@@ -38,11 +42,42 @@ export async function resendEmailCode(email: string): Promise<void> {
   await postAuth<{ status: "accepted" }>("resend-otp", { email });
 }
 
-export async function verifyEmailCode(email: string, code: string): Promise<string> {
-  const result = await postAuth<{ user: unknown; session: unknown; token: string }>(
-    "verify-otp",
-    { email, code },
-  );
+export type VerifyEmailResult =
+  | { readonly requiresPassword: false; readonly token: string }
+  | { readonly requiresPassword: true; readonly challengeToken: string };
+
+export async function verifyEmailCode(
+  email: string,
+  code: string,
+): Promise<VerifyEmailResult> {
+  const result = await postAuth<{
+    user: unknown;
+    session?: unknown;
+    token?: string;
+    requiresPassword?: boolean;
+    challengeToken?: string;
+  }>("verify-otp", { email, code });
+
+  if (result.requiresPassword && result.challengeToken) {
+    return {
+      requiresPassword: true,
+      challengeToken: result.challengeToken,
+    };
+  }
+  if (!result.token) {
+    throw new Error("Unable to finish signing you in. Please try again.");
+  }
+  return { requiresPassword: false, token: result.token };
+}
+
+export async function verifyPassword(
+  challengeToken: string,
+  password: string,
+): Promise<string> {
+  const result = await postAuth<{ token: string }>("verify-password", {
+    challengeToken,
+    password,
+  });
   return result.token;
 }
 

@@ -4,70 +4,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
+import {
+  BillingIcon,
+  IntegrationsIcon,
+  MembersIcon,
+  OverviewIcon,
+  SettingsIcon,
+} from "@/components/icons/sidebar-icons";
+
 import { SidebarShell } from "./sidebar-shell";
-
-/* ---------- Icons ---------- */
-
-const Svg = ({
-  children,
-  size = 16,
-  strokeWidth = 1.7,
-}: {
-  children: ReactNode;
-  size?: number;
-  strokeWidth?: number;
-}) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={strokeWidth}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    {children}
-  </svg>
-);
-
-const IconOverview = () => (
-  <Svg>
-    <rect x="3" y="3" width="7" height="7" rx="1.5" />
-    <rect x="14" y="3" width="7" height="7" rx="1.5" />
-    <rect x="3" y="14" width="7" height="7" rx="1.5" />
-    <rect x="14" y="14" width="7" height="7" rx="1.5" />
-  </Svg>
-);
-const IconIntegrations = () => (
-  <Svg>
-    <path d="M9 7V4a3 3 0 0 1 6 0v3" />
-    <rect x="4" y="7" width="16" height="13" rx="3" />
-    <path d="M9 13h6" />
-  </Svg>
-);
-const IconMembers = () => (
-  <Svg>
-    <circle cx="9" cy="8" r="3.5" />
-    <path d="M2.5 20a6.5 6.5 0 0 1 13 0" />
-    <path d="M16.5 5.5a3 3 0 0 1 0 5.5" />
-    <path d="M18 14.5a5 5 0 0 1 3.5 4.5" />
-  </Svg>
-);
-const IconBilling = () => (
-  <Svg>
-    <rect x="3" y="5" width="18" height="14" rx="2.5" />
-    <path d="M3 10h18" />
-    <path d="M7 15h3" />
-  </Svg>
-);
-const IconSettings = () => (
-  <Svg>
-    <circle cx="12" cy="12" r="3" />
-    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
-  </Svg>
-);
 
 /* ---------- Nav data ---------- */
 
@@ -79,11 +24,11 @@ interface WorkspaceNavItem {
 }
 
 const NAV: WorkspaceNavItem[] = [
-  { label: "Overview", segment: "", icon: <IconOverview />, exact: true },
-  { label: "Integrations", segment: "integrations", icon: <IconIntegrations /> },
-  { label: "Members", segment: "members", icon: <IconMembers /> },
-  { label: "Billing & Usage", segment: "billing", icon: <IconBilling /> },
-  { label: "Settings", segment: "settings", icon: <IconSettings /> },
+  { label: "Overview", segment: "", icon: <OverviewIcon />, exact: true },
+  { label: "Integrations", segment: "integrations", icon: <IntegrationsIcon /> },
+  { label: "Members", segment: "members", icon: <MembersIcon /> },
+  { label: "Billing & Usage", segment: "billing", icon: <BillingIcon /> },
+  { label: "Settings", segment: "settings", icon: <SettingsIcon /> },
 ];
 
 /* ---------- Component ---------- */

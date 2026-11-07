@@ -8,6 +8,7 @@ import {
   Bell,
   Check,
   Copy,
+  KeyRound,
   Laptop,
   LifeBuoy,
   LogOut,
@@ -26,6 +27,7 @@ import {
   Skeleton,
 } from "@/components/ui/skeleton";
 import { apiFetch, errorMessage } from "@/lib/api/browser";
+import { GitHubIcon } from "@/components/icons/github-icon";
 
 /* -------------------------------------------------------------------------- */
 /*                                   Types                                    */
@@ -37,6 +39,10 @@ interface AccountUser {
   readonly email: string;
   readonly emailVerified: boolean;
   readonly image: string | null;
+  readonly githubId: string | null;
+  readonly githubUsername: string | null;
+  readonly usePassword: boolean;
+  readonly hasPassword: boolean;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -1023,18 +1029,351 @@ function DevicesPanel() {
 /*                                 Settings                                   */
 /* -------------------------------------------------------------------------- */
 
+function PasswordPanel({
+  user,
+  onProfileChange,
+}: {
+  user: AccountUser;
+  onProfileChange: (user: AccountUser) => void;
+}) {
+  const [form, setForm] = useState<"none" | "enable" | "change" | "disable">("none");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const resetForm = () => {
+    setForm("none");
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+  };
+
+  const submit = async () => {
+    if (busy) return;
+    setError(null);
+    setNotice(null);
+
+    if (form === "disable") {
+      if (user.hasPassword && currentPassword.length === 0) {
+        setError("Enter your current password to disable password sign-in.");
+        return;
+      }
+      setBusy(true);
+      try {
+        const result = await apiFetch<UserEnvelope>("/v1/users/me/password", {
+          method: "DELETE",
+          body: currentPassword ? { currentPassword } : {},
+        });
+        onProfileChange(result.user);
+        setNotice("Password sign-in disabled.");
+        resetForm();
+      } catch (cause) {
+        setError(errorMessage(cause));
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setError("Use a password with at least 8 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError("The passwords do not match.");
+      return;
+    }
+    if (form === "change" && currentPassword.length === 0) {
+      setError("Enter your current password.");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const result = await apiFetch<UserEnvelope>("/v1/users/me/password", {
+        method: "PUT",
+        body: {
+          newPassword,
+          ...(currentPassword ? { currentPassword } : {}),
+        },
+      });
+      onProfileChange(result.user);
+      setNotice(
+        form === "change" ? "Password updated." : "Password sign-in enabled.",
+      );
+      resetForm();
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <SectionCard
+      title="Password sign-in"
+      description="When enabled, Jetic asks for your password after email verification before opening the dashboard."
+      action={
+        <Toggle
+          checked={user.usePassword}
+          disabled={busy}
+          label="Toggle password sign-in"
+          onChange={() => {
+            setError(null);
+            setNotice(null);
+            setCurrentPassword("");
+            setNewPassword("");
+            setConfirmPassword("");
+            setForm(user.usePassword ? "disable" : "enable");
+          }}
+        />
+      }
+      footer={
+        <span>
+          {user.usePassword
+            ? "Password verification is required after the email code."
+            : "Email verification alone signs you in."}
+        </span>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        {notice && (
+          <p role="status" className="text-[12px] text-[var(--jetic-emphasis)]">
+            {notice}
+          </p>
+        )}
+        {error && (
+          <p role="alert" className="text-[12px] leading-5 text-red-400">
+            {error}
+          </p>
+        )}
+
+        {form === "none" ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="jetic-muted inline-flex items-center gap-1.5 text-[12px]">
+              <KeyRound size={13} />
+              {user.usePassword ? "Password is set" : "No password set"}
+            </span>
+            {user.usePassword && (
+              <button
+                type="button"
+                onClick={() => setForm("change")}
+                className={secondaryButton}
+              >
+                Change password
+              </button>
+            )}
+          </div>
+        ) : (
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void submit();
+            }}
+            className="flex flex-col gap-3"
+          >
+            <p className="jetic-muted text-[12px] leading-5">
+              {form === "enable"
+                ? "Set a password to enable password verification."
+                : form === "change"
+                  ? "Confirm your current password, then choose a new one."
+                  : "Confirm your current password to disable password verification."}
+            </p>
+
+            {(form === "change" || form === "disable") && (
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+                placeholder="Current password"
+                autoComplete="current-password"
+                disabled={busy}
+                className={inputClass}
+              />
+            )}
+
+            {form !== "disable" && (
+              <>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  placeholder="New password"
+                  autoComplete="new-password"
+                  disabled={busy}
+                  className={inputClass}
+                />
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  placeholder="Confirm new password"
+                  autoComplete="new-password"
+                  disabled={busy}
+                  className={inputClass}
+                />
+                <p className="jetic-muted text-[10.5px]">
+                  At least 8 characters.
+                </p>
+              </>
+            )}
+
+            <div className="flex items-center gap-2">
+              <button type="submit" disabled={busy} className={primaryButton}>
+                {busy
+                  ? "Saving…"
+                  : form === "disable"
+                    ? "Disable password"
+                    : form === "change"
+                      ? "Update password"
+                      : "Enable password"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  resetForm();
+                  setError(null);
+                }}
+                disabled={busy}
+                className={secondaryButton}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </SectionCard>
+  );
+}
+
+function ConnectedAccountsPanel({
+  user,
+  onProfileChange,
+}: {
+  user: AccountUser;
+  onProfileChange: (user: AccountUser) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const connect = () => {
+    const next = window.location.pathname;
+    window.location.assign(
+      `/api/auth/github/connect?next=${encodeURIComponent(next)}`,
+    );
+  };
+
+  const disconnect = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await apiFetch<UserEnvelope>("/v1/users/me/github", {
+        method: "DELETE",
+      });
+      onProfileChange(result.user);
+      setNotice("GitHub disconnected.");
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const connected = user.githubId !== null;
+  const profileUrl =
+    user.githubUsername !== null
+      ? `https://github.com/${encodeURIComponent(user.githubUsername)}`
+      : null;
+
+  return (
+    <SectionCard
+      title="Connected accounts"
+      description="Use GitHub to sign in or create this account."
+      footer={
+        <span>
+          {connected
+            ? "GitHub is linked to this Jetic account."
+            : "Connect GitHub to sign in with your GitHub identity."}
+        </span>
+      }
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-[var(--jetic-well)] text-white">
+            <GitHubIcon size={16} />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-[12.5px] font-medium text-white">
+              {user.githubUsername ? `@${user.githubUsername}` : "GitHub"}
+            </p>
+            <p className="jetic-muted mt-0.5 text-[11.5px]">
+              {connected ? "Connected" : "Not connected"}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {connected ? (
+            <>
+              {profileUrl && (
+                <a
+                  href={profileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={secondaryButton}
+                >
+                  View profile
+                  <ArrowUpRight size={12} />
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={() => void disconnect()}
+                disabled={busy}
+                className={dangerButton}
+              >
+                {busy ? "Disconnecting…" : "Disconnect"}
+              </button>
+            </>
+          ) : (
+            <button type="button" onClick={connect} className={primaryButton}>
+              <GitHubIcon size={13} />
+              Connect GitHub
+            </button>
+          )}
+        </div>
+      </div>
+
+      {(error || notice) && (
+        <div className="mt-3">
+          <Notice error={error} notice={notice} />
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
 function SettingsPanel({
   user,
   loading,
   error,
   onRetry,
   onNavigate,
+  onProfileChange,
 }: {
   user: AccountUser | null;
   loading: boolean;
   error: string | null;
   onRetry: () => void;
   onNavigate: (tab: AccountTab) => void;
+  onProfileChange: (user: AccountUser) => void;
 }) {
   const [events, setEvents] = useState<SecurityEvent[] | null>(null);
   const [page, setPage] = useState<SecurityEventPage["page"] | null>(null);
@@ -1126,6 +1465,13 @@ function SettingsPanel({
         </SectionCard>
       ) : (
         <PanelError message={error ?? "Unable to load account details."} onRetry={onRetry} />
+      )}
+
+      {user && (
+        <>
+          <PasswordPanel user={user} onProfileChange={onProfileChange} />
+          <ConnectedAccountsPanel user={user} onProfileChange={onProfileChange} />
+        </>
       )}
 
       <SectionCard
@@ -1618,8 +1964,8 @@ function AccountDialogContent({
                   aria-current={active ? "page" : undefined}
                   onClick={() => setTab(item.id)}
                   className={`flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[12.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${active
-                      ? "bg-white/[0.08] font-medium text-white"
-                      : "text-[var(--jetic-muted)] hover:bg-white/[0.04] hover:text-white"
+                    ? "bg-white/[0.08] font-medium text-white"
+                    : "text-[var(--jetic-muted)] hover:bg-white/[0.04] hover:text-white"
                     }`}
                 >
                   <Icon size={15} strokeWidth={1.7} className="shrink-0" />
@@ -1689,8 +2035,8 @@ function AccountDialogContent({
                   aria-current={active ? "page" : undefined}
                   onClick={() => setTab(item.id)}
                   className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[11.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${active
-                      ? "border-white/15 bg-white/10 font-medium text-white"
-                      : "border-transparent text-[var(--jetic-muted)] hover:bg-white/[0.04] hover:text-white"
+                    ? "border-white/15 bg-white/10 font-medium text-white"
+                    : "border-transparent text-[var(--jetic-muted)] hover:bg-white/[0.04] hover:text-white"
                     }`}
                 >
                   <Icon size={12} strokeWidth={1.8} />
@@ -1725,6 +2071,7 @@ function AccountDialogContent({
                 error={profileError}
                 onRetry={retryProfile}
                 onNavigate={setTab}
+                onProfileChange={setProfile}
               />
             )}
             {tab === "privacy" && <PrivacyPanel />}

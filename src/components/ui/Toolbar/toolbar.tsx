@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Check, ChevronsUpDown, Plus, PlusIcon } from "lucide-react";
 
 import { inter } from "@/app/fonts";
-import type { OrganizationRole } from "@/features/workspace/types";
+import type { OrganizationRole, Plan } from "@/features/workspace/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch, errorMessage } from "@/lib/api/browser";
 import { AccountDialog } from "./account-dialog";
@@ -92,6 +92,22 @@ const IconButton = ({ label, children, disabled, onClick }: IconButtonProps) => 
         {children}
     </button>
 );
+
+/** Small badge that shows which plan the active workspace is on. */
+function PlanChip({ plan }: { plan: Plan }) {
+    const isPro = plan === "pro";
+    return (
+        <span
+            title={`${isPro ? "Pro" : "Hobby"} plan`}
+            className={`inline-flex h-5 shrink-0 items-center rounded-full border px-2 text-[10px] font-semibold uppercase tracking-[0.08em] ${isPro
+                ? "border-white/20 bg-white/10 text-white"
+                : "border-white/10 bg-[var(--jetic-recess)] text-[var(--jetic-muted)]"
+                }`}
+        >
+            {isPro ? "Pro" : "Hobby"}
+        </span>
+    );
+}
 
 /* ---------- View tabs + workspace menus ---------- */
 
@@ -181,6 +197,7 @@ function ProductMenus({
 interface SwitcherItem {
     id: string;
     label: string;
+    plan?: Plan;
 }
 
 interface SwitcherProps {
@@ -249,11 +266,12 @@ function Switcher({
                 <span className="max-w-[90px] truncate sm:max-w-[160px]">
                     {current?.label ?? "Select"}
                 </span>
+                {current?.plan && <PlanChip plan={current.plan} />}
                 <ChevronsUpDown size={14} className="shrink-0 text-[var(--jetic-muted)]" />
             </button>
 
             {open && (
-                <div className="jetic-menu absolute left-0 top-[calc(100%+6px)] z-30 w-64 max-w-[calc(100vw-2rem)] p-2">
+                <div className="jetic-menu absolute left-0 top-[calc(100%+6px)] z-30 w-64 max-w-[calc(100vw-2rem)] p-2 rounded">
                     <input
                         type="text"
                         value={query}
@@ -275,6 +293,7 @@ function Switcher({
                                     className="jetic-menu-item"
                                 >
                                     <span className="flex-1 truncate">{item.label}</span>
+                                    {item.plan && <PlanChip plan={item.plan} />}
                                     {item.id === valueId && <Check size={14} className="shrink-0" />}
                                 </button>
                             </li>
@@ -316,6 +335,7 @@ export interface ToolbarWorkspace {
     id: string;
     name: string;
     slug: string;
+    plan: Plan;
     role: OrganizationRole;
 }
 
@@ -375,7 +395,11 @@ export default function Toolbar({
         };
     }, [accountMenuOpen]);
 
-    const workspaceItems = workspaces.map((item) => ({ id: item.id, label: item.name }));
+    const workspaceItems = workspaces.map((item) => ({
+        id: item.id,
+        label: item.name,
+        plan: item.plan,
+    }));
     const sandboxItems = (sandboxes.length > 0 ? sandboxes : project ? [project] : []).map(
         (item) => ({ id: item, label: item }),
     );
@@ -615,6 +639,8 @@ export default function Toolbar({
             {createSandboxOpen && (
                 <CreateSandboxDialog
                     workspaceSlug={workspace.slug}
+                    workspaceName={workspace.name}
+                    workspacePlan={workspace.plan}
                     onClose={() => setCreateSandboxOpen(false)}
                 />
             )}
