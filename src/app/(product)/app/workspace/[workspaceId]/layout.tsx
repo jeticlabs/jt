@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 
 import { inter } from "@/app/fonts";
+import { StateProvider } from "@/context/providers/state-provider";
 import { WorkspaceChrome } from "@/components/ui/WorkspaceChrome/workspace-chrome";
 import { requireAuthContext } from "@/server/auth/session";
 import {
@@ -40,17 +41,19 @@ export default async function WorkspaceLayout({
 
   return (
     <div className={`${inter.className} h-full w-full bg-[#111111]`}>
-      <WorkspaceChrome
-        user={{
-          name: context.user.name,
-          email: context.user.email,
-          image: context.user.image,
-        }}
-        workspace={workspace}
-        workspaces={allWorkspaces}
-      >
-        {children}
-      </WorkspaceChrome>
+      <StateProvider>
+        <WorkspaceChrome
+          user={{
+            name: context.user.name,
+            email: context.user.email,
+            image: context.user.image,
+          }}
+          workspace={workspace}
+          workspaces={allWorkspaces}
+        >
+          {children}
+        </WorkspaceChrome>
+      </StateProvider>
     </div>
   );
 }

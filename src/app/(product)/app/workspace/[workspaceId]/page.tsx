@@ -1,6 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+
+import { listSandboxes } from "@/features/sandbox/sandbox.api";
+import type { Sandbox, SandboxStatus } from "@/features/sandbox/types";
+import { resolveWorkspaceBySlug } from "@/features/workspace/api";
+import type { PageMeta } from "@/features/workspace/types";
+import { errorMessage } from "@/lib/api/browser";
 
 /* ------------------------------- Icons ---------------------------------- */
 
@@ -73,11 +81,6 @@ const ChevronUp = () => (
 const ChevronsUpDown = () => (
   <Icon size={14}>
     <path d="m5 6.5 3-3 3 3M5 9.5l3 3 3-3" />
-  </Icon>
-);
-const CloseIcon = () => (
-  <Icon size={10} stroke={1.8}>
-    <path d="m4 4 8 8M12 4l-8 8" />
   </Icon>
 );
 const BellIcon = () => (
@@ -165,29 +168,31 @@ function ProjectGlyph({ kind }: { kind: IconKind }) {
 
 /* ----------------------------- Status icons ----------------------------- */
 
-function StatusRing({ variant = "build" }: { variant?: "build" | "activity" }) {
+type StatusVariant = "build" | "activity" | "error";
+
+function StatusRing({ variant = "activity" }: { variant?: StatusVariant }) {
   const r = 11;
   const c = 2 * Math.PI * r;
+  const stroke = variant === "error" ? "#f87171" : "#ffffff";
   return (
-    <button
-      type="button"
-      aria-label="Project status"
-      className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--jetic-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+    <span
+      aria-hidden="true"
+      className={`flex h-7 w-7 items-center justify-center rounded-full ${
+        variant === "error" ? "text-red-300" : "text-[var(--jetic-muted)]"
+      }`}
     >
       <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
         <circle cx="14" cy="14" r={r} stroke="rgba(255,255,255,0.12)" strokeWidth="2" />
-        {variant === "build" && (
-          <circle
-            cx="14"
-            cy="14"
-            r={r}
-            stroke="#ffffff"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeDasharray={`${c * 0.28} ${c}`}
-            transform="rotate(-60 14 14)"
-          />
-        )}
+        <circle
+          cx="14"
+          cy="14"
+          r={r}
+          stroke={stroke}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeDasharray={`${c * (variant === "activity" ? 1 : 0.28)} ${c}`}
+          transform="rotate(-60 14 14)"
+        />
         {variant === "build" ? (
           <path
             d="m9.5 14.2 2.2 2.2 3.3-4.2M13.8 14.2l1.2 1.2 3.2-4"
@@ -195,6 +200,13 @@ function StatusRing({ variant = "build" }: { variant?: "build" | "activity" }) {
             strokeWidth="1.2"
             strokeLinecap="round"
             strokeLinejoin="round"
+          />
+        ) : variant === "error" ? (
+          <path
+            d="M14 9v6M14 18.5v.5"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
           />
         ) : (
           <path
@@ -206,7 +218,7 @@ function StatusRing({ variant = "build" }: { variant?: "build" | "activity" }) {
           />
         )}
       </svg>
-    </button>
+    </span>
   );
 }
 
@@ -232,39 +244,48 @@ function UsageRing({ fraction }: { fraction: number }) {
 
 /* -------------------------------- Data ---------------------------------- */
 
-type Project = {
-  name: string;
-  domain: string;
-  commit: string;
-  repo: string;
-  date: string;
-  icon: IconKind;
-  status?: "build" | "activity";
-};
-
-const projects: Project[] = [
-  { name: "jt", domain: "jt-lime.jetic.app", commit: "feat: add strict api rules to api endpoints", repo: "jeticlabs/jt", date: "21h ago", icon: "cube" },
-  /*{ name: "jetic", domain: "cli.jetic.space", commit: "feat: wrong api link in production", repo: "jeticlabs/jt", date: "21h ago", icon: "jt" },
-  { name: "learnwithuncletee", domain: "learnwithuncletee.jetic.app", commit: "Corrected adress in studentidcard.tsx component", repo: "ProdevappOFFICIAL/Learnwithuncletee", date: "Oct 31", icon: "vite" },
-  { name: "learning-deck", domain: "www.learningdeck.online", commit: "feat/aded-results-to-teacher-navitems", repo: "LearningDeck-HQ/LearningDeck", date: "Oct 31", icon: "triangle" },
-  { name: "lab-stx-ide", domain: "ide.labstx.online", commit: "v1.2.2 Live in Production", repo: "LabSTX/LabSTX_IDE", date: "Aug 19", icon: "cube" },
-  { name: "flowfi-btc", domain: "flowfi-btc.jetic.app", commit: "Fixed small changes", repo: "FlowFi-BTC/FlowFi", date: "Sep 14", icon: "vite" },
-  { name: "cpe-project-g3", domain: "cpe-project-g3.jetic.app", commit: "new", repo: "ProdevappOFFICIAL/CPE-510-Project-G3", date: "Aug 19", icon: "vite" },
-  { name: "lab-stx", domain: "www.labstx.online", commit: "Feat: v1.2.2 is Live", repo: "LabSTX/LabSTX", date: "Aug 19", icon: "vite" },
-  { name: "stacks-mart", domain: "stacks-mart-murex.jetic.app", commit: "Fixed the explorer link", repo: "ProdevappOFFICIAL/StacksMart", date: "Jul 25", icon: "triangle" },
-  { name: "stacks-mart-54qe", domain: "stacks-mart-54qe.jetic.app", commit: "Fixed the explorer link", repo: "ProdevappOFFICIAL/StacksMart", date: "Jul 25", icon: "triangle" },
-  { name: "storesolly", domain: "storesolly.jetic.app", commit: "Basic MVP", repo: "Storesoly/Frontend", date: "May 23", icon: "next" },
-  { name: "learning-deck-website-vm49", domain: "learning-deck-website-vm49.jetic.app", commit: "update", repo: "ProdevappOFFICIAL/LearningDeck_Website", date: "6/26/25", icon: "next", status: "activity" },*/
-];
-
 const usage = [
   { label: "Fluid Active CPU", value: "26m 24s / 4h", fraction: 0.11 },
   { label: "CDN Requests", value: "76K / 1M", fraction: 0.076 },
   { label: "ISR Reads", value: "75K / 1M", fraction: 0.075 },
-
   { label: "Edge Requests", value: "112K / 1M", fraction: 0.112 },
   { label: "Function Invocations", value: "18K / 1M", fraction: 0.018 },
 ];
+
+const STATUS_LABEL: Record<SandboxStatus, string> = {
+  provisioning: "Importing",
+  active: "Ready",
+  stopped: "Stopped",
+  error: "Import failed",
+  archived: "Archived",
+  suspended: "Suspended",
+};
+
+function statusVariant(status: SandboxStatus): StatusVariant {
+  if (status === "error") return "error";
+  if (status === "provisioning") return "build";
+  return "activity";
+}
+
+function iconFor(sandbox: Sandbox): IconKind {
+  const hint = `${sandbox.name} ${sandbox.framework ?? ""} ${sandbox.language ?? ""}`.toLowerCase();
+  if (hint.includes("next")) return "next";
+  if (hint.includes("vite")) return "vite";
+  if (sandbox.repositoryOwner?.toLowerCase() === "jeticlabs") return "jt";
+  return "cube";
+}
+
+function formatRelative(value: string): string {
+  const date = new Date(value);
+  const diff = Date.now() - date.getTime();
+  const minutes = Math.floor(diff / 60_000);
+  if (minutes < 60) return `${Math.max(minutes, 1)}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
 
 /* ------------------------------ Components ------------------------------ */
 
@@ -284,39 +305,80 @@ function SectionTitle({ children }: { children: ReactNode }) {
   );
 }
 
-function ProjectCard({ p }: { p: Project }) {
+function SandboxCard({
+  sandbox,
+  href,
+}: {
+  sandbox: Sandbox;
+  href: string;
+}) {
+  const repository = sandbox.repository?.fullName;
+  const branch = sandbox.defaultBranch ?? "main";
+  const status = STATUS_LABEL[sandbox.status];
+
   return (
-    <article className="jetic-card flex flex-col gap-3 rounded-lg bg-[var(--jetic-bg)] p-4 transition-colors hover:border-white/20">
+    <Link
+      href={href}
+      className="jetic-card flex flex-col gap-3 rounded-lg bg-[var(--jetic-bg)] p-4 transition-colors hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+    >
       <header className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex h-7 w-7 shrink-0 items-center justify-center">
-            <ProjectGlyph kind={p.icon} />
+            <ProjectGlyph kind={iconFor(sandbox)} />
           </div>
           <div className="min-w-0 leading-4">
-            <h3 className="truncate text-[13px] font-semibold text-white">{p.name}</h3>
-            <p className="jetic-muted truncate text-xs">{p.domain}</p>
+            <h3 className="truncate text-[13px] font-semibold text-white">
+              {sandbox.name}
+            </h3>
+            <p className="jetic-muted truncate text-xs">
+              {repository ?? "No repository connected"}
+            </p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5 text-[var(--jetic-muted)]">
-          <StatusRing variant={p.status} />
+          <StatusRing variant={statusVariant(sandbox.status)} />
           <ChevronsUpDown />
         </div>
       </header>
+
       <div className="flex flex-col gap-1.5">
         <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-white">
           <span className="shrink-0 text-[var(--jetic-muted)]">
             <CommitIcon />
           </span>
-          <span className="truncate">{p.commit}</span>
+          <span className="truncate">
+            {sandbox.status === "error"
+              ? (sandbox.lastError ?? "The import did not finish")
+              : `${status} · ${branch}`}
+          </span>
         </p>
         <p className="jetic-muted flex items-center gap-1.5 text-xs">
           <GithubIcon />
           <span className="truncate">
-            {p.repo} · {p.date}
+            {repository ?? "no repository"} · {formatRelative(sandbox.updatedAt)}
           </span>
         </p>
       </div>
-    </article>
+    </Link>
+  );
+}
+
+function SandboxSkeleton() {
+  return (
+    <div className="jetic-card flex flex-col gap-3 rounded-lg bg-[var(--jetic-bg)] p-4">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-3">
+          <span className="jetic-shimmer h-7 w-7 rounded-md" />
+          <div className="flex flex-col gap-1.5">
+            <span className="jetic-shimmer h-3 w-28 rounded-full" />
+            <span className="jetic-shimmer h-2.5 w-20 rounded-full" />
+          </div>
+        </div>
+        <span className="jetic-shimmer h-7 w-7 rounded-full" />
+      </div>
+      <span className="jetic-shimmer h-3 w-40 rounded-full" />
+      <span className="jetic-shimmer h-2.5 w-32 rounded-full" />
+    </div>
   );
 }
 
@@ -328,11 +390,24 @@ const secondaryControl =
 const primaryControl =
   "bg-white text-black transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40";
 
+type LoadState = "loading" | "ready" | "error";
+
 export default function DashboardPage() {
+  const params = useParams<{ workspaceId?: string | string[] }>();
+  const workspaceSlug = Array.isArray(params?.workspaceId)
+    ? (params.workspaceId[0] ?? "")
+    : (params?.workspaceId ?? "");
+
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [usageOpen, setUsageOpen] = useState(false);
-  const [repoBannerOpen, setRepoBannerOpen] = useState(true);
+  const [sandboxes, setSandboxes] = useState<Sandbox[]>([]);
+  const [page, setPage] = useState<PageMeta>({ nextCursor: null, hasMore: false });
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const [state, setState] = useState<LoadState>("loading");
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -347,16 +422,67 @@ export default function DashboardPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  useEffect(() => {
+    if (!workspaceSlug) return;
+    let cancelled = false;
+
+    const load = async () => {
+      setState("loading");
+      setLoadError(null);
+      try {
+        const membership = await resolveWorkspaceBySlug(workspaceSlug);
+        const result = await listSandboxes(membership.organization.id, {
+          limit: 100,
+        });
+        if (cancelled) return;
+        setOrganizationId(membership.organization.id);
+        setSandboxes(result.data);
+        setPage(result.page);
+        setState("ready");
+      } catch (error) {
+        if (cancelled) return;
+        setState("error");
+        setLoadError(errorMessage(error));
+      }
+    };
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [workspaceSlug, reloadKey]);
+
+  const loadMore = async () => {
+    if (!organizationId || !page.nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    setLoadError(null);
+    try {
+      const result = await listSandboxes(organizationId, {
+        limit: 100,
+        cursor: page.nextCursor,
+      });
+      setSandboxes((current) => [...current, ...result.data]);
+      setPage(result.page);
+    } catch (error) {
+      setLoadError(errorMessage(error));
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return projects;
-    return projects.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.domain.toLowerCase().includes(q) ||
-        p.repo.toLowerCase().includes(q),
-    );
-  }, [query]);
+    if (!q) return sandboxes;
+    return sandboxes.filter((sandbox) => {
+      const repository = sandbox.repository?.fullName ?? "";
+      return (
+        sandbox.name.toLowerCase().includes(q) ||
+        repository.toLowerCase().includes(q) ||
+        (sandbox.defaultBranch?.toLowerCase().includes(q) ?? false) ||
+        sandbox.status.toLowerCase().includes(q)
+      );
+    });
+  }, [query, sandboxes]);
 
   return (
     <main className="jetic-surface min-h-full w-full bg-[var(--jetic-well)] px-5 pb-16 pt-5 text-white antialiased sm:px-6 lg:px-8">
@@ -376,7 +502,7 @@ export default function DashboardPage() {
               ref={searchRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search projects"
+              placeholder="Search sandboxes"
               className="min-w-0 flex-1 bg-transparent text-[12.5px] text-white outline-none placeholder:text-[var(--jetic-muted)]"
             />
             <kbd className="flex h-5 w-5 items-center justify-center rounded border border-white/10 bg-[var(--jetic-well)] text-[11px] text-[var(--jetic-muted)]">
@@ -515,61 +641,77 @@ export default function DashboardPage() {
             </section>
           </aside>
 
-          {/* Projects */}
+          {/* Sandboxes */}
           <section className="min-w-0 flex-1">
-            <SectionTitle>Sandbox</SectionTitle>
+            <SectionTitle>Sandboxes</SectionTitle>
 
             <div
               className={`grid gap-3 ${
                 view === "grid" ? "sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"
               }`}
             >
-              {repoBannerOpen && !query && (
-                <div className="relative rounded-lg border border-dashed border-white/15 bg-[var(--jetic-bg)] p-4">
+              {state === "loading" &&
+                Array.from({ length: 6 }).map((_, index) => (
+                  <SandboxSkeleton key={index} />
+                ))}
+
+              {state === "error" && (
+                <div className="jetic-card col-span-full flex flex-col items-center gap-3 rounded-lg bg-[var(--jetic-bg)] px-6 py-10 text-center">
+                  <span className="text-[13px] font-semibold text-red-300">
+                    Sandboxes could not be loaded
+                  </span>
+                  <p className="jetic-muted max-w-md text-[12.5px] leading-5">
+                    {loadError ?? "Something went wrong. Please try again."}
+                  </p>
                   <button
                     type="button"
-                    aria-label="Dismiss"
-                    onClick={() => setRepoBannerOpen(false)}
-                    className="absolute -top-2.5 -right-2.5 flex h-5 w-5 items-center justify-center rounded-full border border-white/15 bg-[var(--jetic-bg)] text-[var(--jetic-muted)] transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                    onClick={() => setReloadKey((value) => value + 1)}
+                    className={`h-8 rounded-md px-3 text-[12px] font-medium ${secondaryControl}`}
                   >
-                    <CloseIcon />
-                  </button>
-                  <div className="flex items-center gap-3 pb-3 pl-1 pt-1">
-                    <span className="jetic-muted w-6 text-center text-xs">ex</span>
-                    <div className="leading-4">
-                      <h3 className="text-[13px] font-semibold">New repository detected</h3>
-                      <p className="jetic-muted mt-1 flex items-center gap-1.5 text-xs">
-                        <GithubIcon />
-                        jeticlabs/jetic-api
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className={`h-8 w-full rounded-md text-[12px] font-medium ${primaryControl}`}
-                  >
-                    Import
+                    Retry
                   </button>
                 </div>
               )}
 
-              {filtered.map((p) => (
-                <ProjectCard key={p.name} p={p} />
-              ))}
+              {state === "ready" &&
+                filtered.map((sandbox) => (
+                  <SandboxCard
+                    key={sandbox.id}
+                    sandbox={sandbox}
+                    href={`/app/workspace/${encodeURIComponent(workspaceSlug)}/sandbox/${encodeURIComponent(sandbox.slug)}`}
+                  />
+                ))}
             </div>
 
-            {filtered.length === 0 && (
-              <p className="jetic-muted py-10 text-center text-[12.5px]">
-                No projects match &ldquo;{query}&rdquo;.
+            {state === "ready" && filtered.length === 0 && (
+              <div className="jetic-card mt-3 flex flex-col items-center gap-2 rounded-lg border-dashed bg-[var(--jetic-bg)] px-6 py-12 text-center">
+                <p className="text-[13px] font-semibold text-white">
+                  {query ? "No sandboxes match your search" : "No sandboxes yet"}
+                </p>
+                <p className="jetic-muted max-w-sm text-[12px] leading-5">
+                  {query
+                    ? `Nothing matches “${query}”. Try a different name, repository, or status.`
+                    : "Use New Sandbox in the toolbar to import a GitHub repository and create your first sandbox."}
+                </p>
+              </div>
+            )}
+
+            {state === "ready" && loadError && (
+              <p role="alert" className="mt-3 text-center text-[12px] text-red-300">
+                {loadError}
               </p>
             )}
 
-            <button
-              type="button"
-              className={`mt-4 h-8 w-full rounded-md text-[12px] font-medium ${secondaryControl}`}
-            >
-              Show More
-            </button>
+            {state === "ready" && page.hasMore && !query && (
+              <button
+                type="button"
+                onClick={() => void loadMore()}
+                disabled={loadingMore}
+                className={`mt-4 h-8 w-full rounded-md text-[12px] font-medium disabled:cursor-not-allowed disabled:opacity-50 ${secondaryControl}`}
+              >
+                {loadingMore ? "Loading…" : "Show More"}
+              </button>
+            )}
           </section>
         </div>
       </div>

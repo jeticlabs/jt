@@ -515,7 +515,7 @@ export default function Toolbar({
                             <button
                                 type="button"
                                 onClick={() => setCreateSandboxOpen(true)}
-                                className="flex h-8 items-center gap-1.5 rounded-lg bg-white px-3 text-[13px] font-medium text-black transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                                className="flex px-2 py-1 items-center gap-1.5 rounded-md bg-white px-3 text-[13px] font-medium text-black transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
                             >
                                 <PlusIcon className="h-4 w-4" />
                                 <span className="hidden sm:inline">New Sandbox</span>
@@ -638,6 +638,7 @@ export default function Toolbar({
 
             {createSandboxOpen && (
                 <CreateSandboxDialog
+                    workspaceId={workspace.id}
                     workspaceSlug={workspace.slug}
                     workspaceName={workspace.name}
                     workspacePlan={workspace.plan}

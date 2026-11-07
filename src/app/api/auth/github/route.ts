@@ -26,7 +26,7 @@ export async function GET(request: Request) {
   const authorize = new URL("https://github.com/login/oauth/authorize");
   authorize.searchParams.set("client_id", clientId);
   authorize.searchParams.set("redirect_uri", githubCallbackUrl());
-  authorize.searchParams.set("scope", "read:user user:email");
+  authorize.searchParams.set("scope", "read:user user:email repo");
   authorize.searchParams.set("state", state);
   authorize.searchParams.set("allow_signup", "true");
 
