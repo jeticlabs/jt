@@ -84,6 +84,30 @@ export interface CreateSandboxPayload {
   }[];
 }
 
+export interface SandboxSourceEntry {
+  readonly path: string;
+  readonly type: "blob" | "tree";
+  readonly sha: string;
+  readonly size: number | null;
+}
+
+export interface SandboxSource {
+  readonly branch: string;
+  readonly truncated: boolean;
+  readonly entries: SandboxSourceEntry[];
+}
+
+export interface SandboxSourceFile {
+  readonly path: string;
+  readonly name: string;
+  readonly sha: string;
+  readonly size: number;
+  readonly content: string | null;
+  readonly binary: boolean;
+  readonly tooLarge: boolean;
+  readonly language: string | null;
+}
+
 export interface SandboxPlanContext {
   readonly workspacePlan?: Plan;
 }

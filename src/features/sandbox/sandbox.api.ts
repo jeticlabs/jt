@@ -1,5 +1,11 @@
 import { apiFetch } from "@/lib/api/browser";
-import type { CreateSandboxPayload, Sandbox, SandboxEnvelope } from "./types";
+import type {
+  CreateSandboxPayload,
+  Sandbox,
+  SandboxEnvelope,
+  SandboxSource,
+  SandboxSourceFile,
+} from "./types";
 
 export function createSandbox(
   organizationId: string,
@@ -17,6 +23,34 @@ export function getSandbox(
 ): Promise<SandboxEnvelope> {
   return apiFetch<SandboxEnvelope>(
     `/v1/organizations/${encodeURIComponent(organizationId)}/sandboxes/${encodeURIComponent(sandboxId)}`,
+  );
+}
+
+export function getSandboxBySlug(
+  organizationId: string,
+  slug: string,
+): Promise<SandboxEnvelope> {
+  return apiFetch<SandboxEnvelope>(
+    `/v1/organizations/${encodeURIComponent(organizationId)}/sandboxes/slug/${encodeURIComponent(slug)}`,
+  );
+}
+
+export function getSandboxSource(
+  organizationId: string,
+  sandboxId: string,
+): Promise<SandboxSource> {
+  return apiFetch<SandboxSource>(
+    `/v1/organizations/${encodeURIComponent(organizationId)}/sandboxes/${encodeURIComponent(sandboxId)}/source`,
+  );
+}
+
+export function getSandboxSourceFile(
+  organizationId: string,
+  sandboxId: string,
+  path: string,
+): Promise<SandboxSourceFile> {
+  return apiFetch<SandboxSourceFile>(
+    `/v1/organizations/${encodeURIComponent(organizationId)}/sandboxes/${encodeURIComponent(sandboxId)}/source/file?path=${encodeURIComponent(path)}`,
   );
 }
 

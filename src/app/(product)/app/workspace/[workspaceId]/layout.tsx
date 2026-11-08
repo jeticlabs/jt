@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 
 import { inter } from "@/app/fonts";
 import { StateProvider } from "@/context/providers/state-provider";
@@ -32,7 +32,20 @@ export default async function WorkspaceLayout({
     (await findWorkspaceById(context.token, workspaceId));
 
   if (!workspace) {
-    notFound();
+    // Authenticated deep links with an unknown slug should land on the user's
+    // current workspace instead of a dead end. The active organization from
+    // the session wins; otherwise use the newest workspace they belong to.
+    const fallback =
+      (context.session.activeOrganizationId
+        ? allWorkspaces.find(
+            (item) => item.id === context.session.activeOrganizationId,
+          )
+        : undefined) ?? allWorkspaces[0];
+
+    if (fallback) {
+      redirect(`/app/workspace/${encodeURIComponent(fallback.slug)}`);
+    }
+    redirect("/app/onboarding");
   }
 
   if (workspace.slug !== workspaceId) {

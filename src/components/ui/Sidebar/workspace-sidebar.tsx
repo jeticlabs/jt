@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 import {
+  ActivityIcon,
   BillingIcon,
   IntegrationsIcon,
   MembersIcon,
@@ -25,6 +26,7 @@ interface WorkspaceNavItem {
 
 const NAV: WorkspaceNavItem[] = [
   { label: "Overview", segment: "", icon: <OverviewIcon />, exact: true },
+  { label: "Activity", segment: "activity", icon: <ActivityIcon /> },
   { label: "Integrations", segment: "integrations", icon: <IntegrationsIcon /> },
   { label: "Members", segment: "members", icon: <MembersIcon /> },
   { label: "Billing & Usage", segment: "billing", icon: <BillingIcon /> },

@@ -11,6 +11,7 @@ import {
 import { useRouter } from "next/navigation";
 import {
   AlertCircle,
+  ArrowRight,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -26,6 +27,7 @@ import {
   X,
 } from "lucide-react";
 
+import { JeticAnimatedIcon } from "@/components/jetic-animated-icon";
 import { GitHubIcon } from "@/components/icons/github-icon";
 import {
   selectGithubConnected,
@@ -607,18 +609,6 @@ export function CreateSandboxDialog({
     };
   }, [step, sandboxId, workspaceId, created, failed]);
 
-  /* Navigate into the new sandbox once provisioning finishes. */
-  useEffect(() => {
-    if (step !== "create" || sandbox?.status !== "active") return;
-    const timeout = window.setTimeout(() => {
-      router.push(
-        `/app/workspace/${encodeURIComponent(workspaceSlug)}/sandbox/${encodeURIComponent(sandbox.slug)}`,
-      );
-      router.refresh();
-    }, 700);
-    return () => window.clearTimeout(timeout);
-  }, [step, sandbox, router, workspaceSlug]);
-
   function handleClose() {
     resetDraft();
     resetGithub();
@@ -759,6 +749,13 @@ export function CreateSandboxDialog({
     } catch (error) {
       failed(errorMessage(error));
     }
+  };
+
+  const openSandbox = () => {
+    if (!sandbox) return;
+    const href = `/app/workspace/${encodeURIComponent(workspaceSlug)}/sandbox/${encodeURIComponent(sandbox.slug)}?setup=1`;
+    handleClose();
+    router.push(href);
   };
 
   const heading =
@@ -1350,7 +1347,7 @@ export function CreateSandboxDialog({
                   className="jetic-btn flex items-center justify-center gap-2"
                 >
                   {creating ? (
-                    <Loader2 size={16} className="animate-spin" />
+                    <JeticAnimatedIcon size={18} loop sheen="#000" className="text-black" />
                   ) : (
                     <GitHubIcon size={15} />
                   )}
@@ -1371,6 +1368,7 @@ export function CreateSandboxDialog({
               error={createError}
               hasSandbox={Boolean(sandboxId)}
               onRetry={() => void retryProvisioning()}
+              onOpen={openSandbox}
               onBack={() => setStep("configure")}
               onClose={handleClose}
             />
@@ -1415,6 +1413,7 @@ function CreateProgress({
   error,
   hasSandbox,
   onRetry,
+  onOpen,
   onBack,
   onClose,
 }: {
@@ -1423,6 +1422,7 @@ function CreateProgress({
   error: string | null;
   hasSandbox: boolean;
   onRetry: () => void;
+  onOpen: () => void;
   onBack: () => void;
   onClose: () => void;
 }) {
@@ -1446,7 +1446,7 @@ function CreateProgress({
     <div className="flex flex-col gap-6 py-2">
       <div className="flex flex-col items-center gap-3 text-center">
         <span
-          className={`flex h-14 w-14 items-center justify-center rounded-full border ${
+          className={`relative flex h-16 w-16 items-center justify-center rounded-2xl border ${
             isError
               ? "border-red-500/30 bg-red-500/10 text-red-300"
               : isActive
@@ -1456,10 +1456,18 @@ function CreateProgress({
         >
           {isError ? (
             <AlertCircle size={24} />
-          ) : isActive ? (
-            <CheckCircle2 size={26} />
           ) : (
-            <Loader2 size={24} className="animate-spin" />
+            <JeticAnimatedIcon
+              size={27}
+              loop={!isActive}
+              sheen="#fff"
+              className="text-white"
+            />
+          )}
+          {isActive && (
+            <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-400/15 text-emerald-200">
+              <Check size={11} strokeWidth={2.4} />
+            </span>
           )}
         </span>
         <div>
@@ -1474,7 +1482,7 @@ function CreateProgress({
             {isError
               ? (sandbox?.lastError ?? error ?? "Something went wrong while creating the sandbox.")
               : isActive
-                ? "Everything is ready. Opening your sandbox…"
+                ? "Everything is ready. Open your sandbox to start exploring the API model and source."
                 : "Jetic is cloning the repository into an isolated microVM. This usually takes a few seconds."}
           </p>
         </div>
@@ -1523,30 +1531,35 @@ function CreateProgress({
         </a>
       )}
 
-      {(isError || creating) && (
+      {isActive ? (
+        <div className="flex justify-center">
+          <button type="button" onClick={onOpen} className={primaryButton}>
+            Open sandbox
+            <ArrowRight size={14} />
+          </button>
+        </div>
+      ) : isError ? (
         <div className="flex items-center justify-center gap-2">
-          {isError ? (
-            <>
-              <button type="button" onClick={onRetry} className={primaryButton}>
-                <RefreshCw size={14} />
-                {hasSandbox ? "Retry import" : "Back to settings"}
-              </button>
-              {!hasSandbox && (
-                <button type="button" onClick={onBack} className={secondaryButton}>
-                  Back
-                </button>
-              )}
-              <button type="button" onClick={onClose} className={secondaryButton}>
-                Close
-              </button>
-            </>
-          ) : (
-            <button type="button" onClick={onClose} className={secondaryButton}>
-              Continue in background
+          <button type="button" onClick={onRetry} className={primaryButton}>
+            <RefreshCw size={14} />
+            {hasSandbox ? "Retry import" : "Back to settings"}
+          </button>
+          {!hasSandbox && (
+            <button type="button" onClick={onBack} className={secondaryButton}>
+              Back
             </button>
           )}
+          <button type="button" onClick={onClose} className={secondaryButton}>
+            Close
+          </button>
         </div>
-      )}
+      ) : creating ? (
+        <div className="flex justify-center">
+          <button type="button" onClick={onClose} className={secondaryButton}>
+            Continue in background
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

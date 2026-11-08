@@ -1,5 +1,8 @@
 "use client";
-import { useState } from "react";
+
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useParams, usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { SidebarSkeleton } from "@/components/ui/skeleton";
 import {
@@ -37,12 +40,14 @@ import { SidebarShell } from "./sidebar-shell";
 interface NavChild {
     id: string;
     label: string;
+    segment: string;
     icon: ReactNode;
 }
 
 interface NavItem {
     id: string;
     label: string;
+    segment?: string;
     icon: ReactNode;
     children?: NavChild[];
 }
@@ -53,6 +58,7 @@ const NAV: NavItem[] = [
     {
         id: "overview",
         label: "Overview",
+        segment: "",
         icon: <OverviewIcon />,
     },
     {
@@ -60,8 +66,8 @@ const NAV: NavItem[] = [
         label: "Project",
         icon: <ProjectIcon />,
         children: [
-            { id: "source", label: "Source", icon: <SourceIcon /> },
-            { id: "config", label: "Config", icon: <ConfigIcon /> }
+            { id: "source", label: "Source", segment: "source", icon: <SourceIcon /> },
+            { id: "config", label: "Config", segment: "config", icon: <ConfigIcon /> },
         ],
     },
     {
@@ -69,8 +75,8 @@ const NAV: NavItem[] = [
         label: "Runtime",
         icon: <RuntimeIcon />,
         children: [
-            { id: "deployments", label: "Deployments", icon: <DeploymentsIcon /> },
-            { id: "environment", label: "Enviroment", icon: <EnvironmentIcon /> }
+            { id: "deployments", label: "Deployments", segment: "deployments", icon: <DeploymentsIcon /> },
+            { id: "environment", label: "Environment", segment: "environments", icon: <EnvironmentIcon /> },
         ],
     },
     {
@@ -78,21 +84,23 @@ const NAV: NavItem[] = [
         label: "Model",
         icon: <ModelIcon />,
         children: [
-            { id: "endpoints", label: "Endpoints", icon: <EndpointsIcon /> },
-            { id: "schema", label: "Schema", icon: <SchemaIcon /> },
-            { id: "security", label: "Security", icon: <SecurityIcon /> },
-            { id: "dependency", label: "Dependency", icon: <DependencyIcon /> },
-            { id: "jenkins", label: "Jenkins", icon: <JenkinsIcon /> },
+            { id: "endpoints", label: "Endpoints", segment: "endpoints", icon: <EndpointsIcon /> },
+            { id: "schema", label: "Schema", segment: "schema", icon: <SchemaIcon /> },
+            { id: "security", label: "Security", segment: "security", icon: <SecurityIcon /> },
+            { id: "dependency", label: "Dependency", segment: "dependency", icon: <DependencyIcon /> },
+            { id: "jenkins", label: "Jenkins", segment: "jenkins", icon: <JenkinsIcon /> },
         ],
     },
     {
         id: "workflow",
         label: "Workflow",
+        segment: "workflow",
         icon: <WorkflowIcon />,
     },
     {
         id: "simulations",
         label: "Simulations",
+        segment: "simulations",
         icon: <SimulationsIcon />,
     },
     {
@@ -100,29 +108,33 @@ const NAV: NavItem[] = [
         label: "Automations",
         icon: <AutomationsIcon />,
         children: [
-            { id: "agents", label: "Agents", icon: <AgentsIcon /> },
-            { id: "workers", label: "Workers", icon: <WorkersIcon /> },
-            { id: "schedules", label: "Schedules", icon: <SchedulesIcon /> },
+            { id: "agents", label: "Agents", segment: "agent", icon: <AgentsIcon /> },
+            { id: "workers", label: "Workers", segment: "workers", icon: <WorkersIcon /> },
+            { id: "schedules", label: "Schedules", segment: "schedules", icon: <SchedulesIcon /> },
         ],
     },
     {
         id: "tools",
         label: "Tools",
+        segment: "tools",
         icon: <ToolsIcon />,
     },
     {
         id: "runs",
         label: "Runs & Traces",
+        segment: "runs",
         icon: <RunsIcon />,
     },
     {
         id: "reports",
         label: "Reports",
+        segment: "reports",
         icon: <ReportsIcon />,
     },
     {
         id: "settings",
         label: "Settings",
+        segment: "settings",
         icon: <SettingsIcon />,
     },
 ];
@@ -138,7 +150,7 @@ function NavRow({
     depth = 0,
     hasChildren,
     open,
-    onSelect,
+    href,
     onToggle,
 }: {
     id: string;
@@ -149,38 +161,53 @@ function NavRow({
     depth?: number;
     hasChildren?: boolean;
     open?: boolean;
-    onSelect: (id: string) => void;
+    href?: string;
     onToggle?: (id: string) => void;
 }) {
-    const handleClick = () => {
-        if (hasChildren && onToggle) onToggle(id);
-        else onSelect(id);
+    const className = `flex h-9 w-full items-center rounded-lg text-left text-[13.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 ${collapsed ? "justify-center px-0" : "gap-2.5 pr-3"
+        } ${active
+            ? "bg-[var(--jetic-recess)] font-semibold text-white"
+            : "font-medium text-[var(--jetic-muted)] hover:bg-[var(--jetic-well)] hover:text-white"
+        }`;
+    const style = {
+        paddingLeft: collapsed ? undefined : depth === 1 ? "2.25rem" : "0.75rem",
     };
+    const content = (
+        <>
+            <span className={active ? "text-white" : "text-[var(--jetic-faint)]"}>{icon}</span>
+            {!collapsed && <span className="flex-1 truncate">{label}</span>}
+            {!collapsed && hasChildren && (
+                <span className={active || open ? "text-[var(--jetic-muted)]" : "text-[var(--jetic-faint)]"}>
+                    <ChevronRightIcon open={!!open} />
+                </span>
+            )}
+        </>
+    );
 
     return (
         <li>
-            <button
-                type="button"
-                title={collapsed ? label : undefined}
-                aria-current={active ? "page" : undefined}
-                onClick={handleClick}
-                style={{
-                    paddingLeft: collapsed ? undefined : depth === 1 ? "2.25rem" : "0.75rem",
-                }}
-                className={`flex h-9 w-full items-center rounded-lg text-left text-[13.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 ${collapsed ? "justify-center px-0" : "gap-2.5 pr-3"
-                    } ${active
-                        ? "bg-[var(--jetic-recess)] font-semibold text-white"
-                        : "font-medium text-[var(--jetic-muted)] hover:bg-[var(--jetic-well)] hover:text-white"
-                    }`}
-            >
-                <span className={active ? "text-white" : "text-[var(--jetic-faint)]"}>{icon}</span>
-                {!collapsed && <span className="flex-1 truncate">{label}</span>}
-                {!collapsed && hasChildren && (
-                    <span className={active || open ? "text-[var(--jetic-muted)]" : "text-[var(--jetic-faint)]"}>
-                        <ChevronRightIcon open={!!open} />
-                    </span>
-                )}
-            </button>
+            {href ? (
+                <Link
+                    href={href}
+                    title={collapsed ? label : undefined}
+                    aria-current={active ? "page" : undefined}
+                    className={className}
+                    style={style}
+                >
+                    {content}
+                </Link>
+            ) : (
+                <button
+                    type="button"
+                    title={collapsed ? label : undefined}
+                    aria-current={active ? "page" : undefined}
+                    onClick={() => onToggle?.(id)}
+                    className={className}
+                    style={style}
+                >
+                    {content}
+                </button>
+            )}
         </li>
     );
 }
@@ -193,9 +220,41 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ collapsed = false, loading = false }: SidebarProps) {
-    const [active, setActive] = useState<string>("overview");
-    const [expanded, setExpanded] = useState<Set<string>>(new Set(["model"]));
+    const params = useParams<{ workspaceId?: string | string[]; sandboxId?: string | string[] }>();
+    const pathname = usePathname() ?? "";
+    const workspaceSlug = Array.isArray(params?.workspaceId)
+        ? (params.workspaceId[0] ?? "")
+        : (params?.workspaceId ?? "");
+    const sandboxSlug = Array.isArray(params?.sandboxId)
+        ? (params.sandboxId[0] ?? "")
+        : (params?.sandboxId ?? "");
+    const base = `/app/workspace/${encodeURIComponent(workspaceSlug)}/sandbox/${encodeURIComponent(sandboxSlug)}`;
+    const relative = pathname === base
+        ? ""
+        : pathname.startsWith(`${base}/`)
+            ? pathname.slice(base.length + 1)
+            : "";
+
+    const [expanded, setExpanded] = useState<Set<string>>(new Set(["project"]));
     const [query, setQuery] = useState<string>("");
+
+    const activeParentId = useMemo(
+        () =>
+            NAV.find((item) =>
+                item.children?.some(
+                    (child) =>
+                        relative === child.segment ||
+                        relative.startsWith(`${child.segment}/`),
+                ),
+            )?.id,
+        [relative],
+    );
+
+    const openGroups = useMemo(() => {
+        const next = new Set(expanded);
+        if (activeParentId) next.add(activeParentId);
+        return next;
+    }, [expanded, activeParentId]);
 
     if (loading) {
         return <SidebarSkeleton collapsed={collapsed} />;
@@ -209,6 +268,16 @@ export default function Sidebar({ collapsed = false, loading = false }: SidebarP
             return next;
         });
     };
+
+    const isChildActive = (child: NavChild) =>
+        relative === child.segment || relative.startsWith(`${child.segment}/`);
+
+    const isItemActive = (item: NavItem) =>
+        item.children?.length
+            ? item.children.some(isChildActive)
+            : item.segment === ""
+                ? relative === ""
+                : relative === item.segment || relative.startsWith(`${item.segment}/`);
 
     const filtered = query.trim().toLowerCase();
 
@@ -255,18 +324,26 @@ export default function Sidebar({ collapsed = false, loading = false }: SidebarP
             >
                 <ul className="flex flex-col gap-0.5">
                     {visibleItems.map((item) => {
-                        const isOpen = expanded.has(item.id);
+                        const isOpen = openGroups.has(item.id);
+                        const active = isItemActive(item);
+                        const firstChild = item.children?.[0];
+                        const href = item.children?.length
+                            ? collapsed && firstChild
+                                ? `${base}/${firstChild.segment}`
+                                : undefined
+                            : `${base}${item.segment ? `/${item.segment}` : ""}`;
+
                         return (
                             <div key={item.id}>
                                 <NavRow
                                     id={item.id}
                                     label={item.label}
                                     icon={item.icon}
-                                    active={active === item.id}
+                                    active={active}
                                     collapsed={collapsed}
                                     hasChildren={!!item.children?.length}
                                     open={isOpen}
-                                    onSelect={setActive}
+                                    href={href}
                                     onToggle={toggle}
                                 />
                                 {/* Children */}
@@ -278,9 +355,9 @@ export default function Sidebar({ collapsed = false, loading = false }: SidebarP
                                                 id={child.id}
                                                 label={child.label}
                                                 icon={child.icon}
-                                                active={active === child.id}
+                                                active={isChildActive(child)}
                                                 depth={1}
-                                                onSelect={setActive}
+                                                href={`${base}/${child.segment}`}
                                             />
                                         ))}
                                     </ul>
