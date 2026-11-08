@@ -23,15 +23,6 @@ export function listActivity(
   );
 }
 
-export function syncGithubActivity(
-  organizationId: string,
-): Promise<{ synced: number; repositories: number }> {
-  return apiFetch<{ synced: number; repositories: number }>(
-    `/v1/organizations/${encodeURIComponent(organizationId)}/activity/sync-github`,
-    { method: "POST" },
-  );
-}
-
 export interface ActivityStreamHandlers {
   readonly onEvent: (event: ActivityEvent) => void;
   readonly onReady?: () => void;
