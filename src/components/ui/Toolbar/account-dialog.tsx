@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/skeleton";
 import { apiFetch, errorMessage } from "@/lib/api/browser";
 import { GitHubIcon } from "@/components/icons/github-icon";
+import { useUserStore } from "@/context";
 
 /* -------------------------------------------------------------------------- */
 /*                                   Types                                    */
@@ -1911,13 +1912,23 @@ function AccountDialogContent({
     setProfileAttempt((value) => value + 1);
   };
 
+  const updateProfile = (next: AccountUser) => {
+    setProfile(next);
+    useUserStore.getState().setUser(next);
+    void useUserStore.getState().refreshGithub();
+  };
+
   useEffect(() => {
     let cancelled = false;
 
     void (async () => {
       try {
         const result = await apiFetch<UserEnvelope>("/v1/users/me");
-        if (!cancelled) setProfile(result.user);
+        if (!cancelled) {
+          setProfile(result.user);
+          useUserStore.getState().setUser(result.user);
+          void useUserStore.getState().refreshGithub();
+        }
       } catch (cause) {
         if (!cancelled) setProfileError(errorMessage(cause));
       } finally {
@@ -2051,7 +2062,7 @@ function AccountDialogContent({
               (profile ? (
                 <ProfilePanel
                   user={profile}
-                  onProfileChange={setProfile}
+                  onProfileChange={updateProfile}
                   onSignOut={onSignOut}
                   onNavigate={setTab}
                 />
@@ -2071,7 +2082,7 @@ function AccountDialogContent({
                 error={profileError}
                 onRetry={retryProfile}
                 onNavigate={setTab}
-                onProfileChange={setProfile}
+                onProfileChange={updateProfile}
               />
             )}
             {tab === "privacy" && <PrivacyPanel />}

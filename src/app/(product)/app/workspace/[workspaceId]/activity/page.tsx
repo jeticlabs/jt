@@ -16,7 +16,7 @@ import {
 
 import { GitHubIcon } from "@/components/icons/github-icon";
 
-import { listActivity } from "@/features/activity/activity.api";
+import { listActivity, syncGithubActivity } from "@/features/activity/activity.api";
 import type { ActivityEvent } from "@/features/activity/types";
 import { useActivityStream } from "@/features/activity/use-activity-stream";
 import { listSandboxes } from "@/features/sandbox/sandbox.api";
@@ -150,6 +150,8 @@ export default function WorkspaceActivityPage() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [loadingMore, setLoadingMore] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
@@ -161,6 +163,20 @@ export default function WorkspaceActivityPage() {
       setError(null);
       try {
         const membership = await resolveWorkspaceBySlug(workspaceSlug);
+
+        // Best-effort commit sync so pushes appear even when the GitHub
+        // webhook is not configured yet. Throttled to avoid hammering GitHub.
+        try {
+          const syncKey = `jetic:activity-sync:${membership.organization.id}`;
+          const lastSync = Number(window.sessionStorage.getItem(syncKey) ?? 0);
+          if (Date.now() - lastSync > 60_000) {
+            await syncGithubActivity(membership.organization.id);
+            window.sessionStorage.setItem(syncKey, String(Date.now()));
+          }
+        } catch {
+          // Commit sync is optional; the activity list is still authoritative.
+        }
+
         const [sandboxPage, activityPage] = await Promise.all([
           listSandboxes(membership.organization.id, { limit: 100 }),
           listActivity(membership.organization.id, { limit: 100 }),
@@ -221,6 +237,24 @@ export default function WorkspaceActivityPage() {
     }
   };
 
+  const syncCommits = async () => {
+    if (!organizationId || syncing) return;
+    setSyncing(true);
+    setSyncError(null);
+    try {
+      await syncGithubActivity(organizationId);
+      window.sessionStorage.setItem(
+        `jetic:activity-sync:${organizationId}`,
+        String(Date.now()),
+      );
+      setReloadKey((value) => value + 1);
+    } catch (cause) {
+      setSyncError(errorMessage(cause));
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   return (
     <main className="jetic-surface min-h-full w-full bg-[var(--jetic-well)] px-5 pb-16 pt-5 text-white antialiased sm:px-6 lg:px-8">
       <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-5">
@@ -268,6 +302,19 @@ export default function WorkspaceActivityPage() {
             </div>
             <button
               type="button"
+              onClick={() => void syncCommits()}
+              disabled={syncing || !organizationId}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/10 px-3 text-[12px] font-medium text-[var(--jetic-muted)] transition-colors hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {syncing ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : (
+                <GitCommitHorizontal size={13} />
+              )}
+              Sync GitHub
+            </button>
+            <button
+              type="button"
               onClick={() => setReloadKey((value) => value + 1)}
               className="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/10 px-3 text-[12px] font-medium text-[var(--jetic-muted)] transition-colors hover:border-white/20 hover:text-white"
             >
@@ -276,6 +323,12 @@ export default function WorkspaceActivityPage() {
             </button>
           </div>
         </header>
+
+        {syncError && (
+          <p role="alert" className="rounded-md border border-red-500/20 bg-red-500/10 px-3 py-2 text-[12px] text-red-300">
+            {syncError}
+          </p>
+        )}
 
         {status === "error" ? (
           <div className="jetic-card flex flex-col items-center gap-3 rounded-lg bg-[var(--jetic-bg)] px-6 py-12 text-center">

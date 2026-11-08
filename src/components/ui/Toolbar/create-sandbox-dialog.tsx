@@ -552,7 +552,7 @@ export function CreateSandboxDialog({
   }, [resetDraft, resetGithub]);
 
   useEffect(() => {
-    void loadUser();
+    void loadUser({ force: true });
   }, [loadUser]);
 
   useEffect(() => {
