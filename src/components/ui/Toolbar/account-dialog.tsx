@@ -14,6 +14,7 @@ import {
   LogOut,
   RefreshCw,
   Settings,
+  ShieldAlert,
   ShieldCheck,
   User,
   X,
@@ -761,6 +762,9 @@ function DevicesPanel() {
       Number(right.current) - Number(left.current) ||
       new Date(right.lastActiveAt).getTime() - new Date(left.lastActiveAt).getTime(),
   );
+  const currentDevice =
+    orderedDevices.find((device) => device.id === currentDeviceId) ?? null;
+  const canManageDevices = currentDevice?.status === "trusted";
 
   const trustDevice = async (device: Device) => {
     if (busy) return;
@@ -861,6 +865,22 @@ function DevicesPanel() {
     <div className="flex flex-col gap-4">
       <Notice error={error} notice={notice} />
 
+      {currentDevice && !canManageDevices ? (
+        <div
+          role="status"
+          className="flex gap-3 rounded-lg border border-amber-400/20 bg-amber-400/10 p-3 text-[12px] leading-5 text-amber-200"
+        >
+          <ShieldAlert size={16} className="mt-0.5 shrink-0" strokeWidth={1.8} />
+          <p>
+            <strong className="font-medium text-amber-100">
+              This device is waiting for approval.
+            </strong>{" "}
+            Approve it from a device that is already trusted. Untrusted devices
+            cannot approve themselves or manage other devices.
+          </p>
+        </div>
+      ) : null}
+
       <SectionCard
         title="Active sessions"
         description="Every browser or API client currently signed in to your account."
@@ -936,7 +956,7 @@ function DevicesPanel() {
 
       <SectionCard
         title="Devices"
-        description="Devices that have signed in to this account. Trusted devices skip extra verification."
+        description="The first device on an account is trusted automatically. New devices stay pending until an already-trusted device approves them."
       >
         {orderedDevices.length === 0 ? (
           <p className="jetic-muted py-4 text-center text-[12px]">
@@ -974,7 +994,7 @@ function DevicesPanel() {
                           ? "Trusted"
                           : device.status === "blocked"
                             ? "Blocked"
-                            : "New"}
+                            : "Pending approval"}
                       </Badge>
                       {isCurrent && <Badge>This device</Badge>}
                     </div>
@@ -987,7 +1007,7 @@ function DevicesPanel() {
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
-                    {device.status !== "trusted" && (
+                    {canManageDevices && !isCurrent && device.status !== "trusted" && (
                       <button
                         type="button"
                         onClick={() => void trustDevice(device)}
@@ -998,23 +1018,23 @@ function DevicesPanel() {
                           ? "Saving…"
                           : device.status === "blocked"
                             ? "Unblock"
-                            : "Trust"}
+                            : "Approve"}
                       </button>
                     )}
-                    {device.status !== "blocked" && (
+                    {canManageDevices && !isCurrent && device.status !== "blocked" && (
                       <button
                         type="button"
                         onClick={() => void blockDevice(device)}
-                        disabled={busy !== null || isCurrent}
-                        title={
-                          isCurrent
-                            ? "You cannot block the device you are currently using."
-                            : undefined
-                        }
+                        disabled={busy !== null}
                         className={dangerButton}
                       >
                         {isBusy ? "Saving…" : "Block"}
                       </button>
+                    )}
+                    {!canManageDevices && isCurrent && (
+                      <span className="jetic-muted text-[11px]">
+                        Approval required
+                      </span>
                     )}
                   </div>
                 </div>
