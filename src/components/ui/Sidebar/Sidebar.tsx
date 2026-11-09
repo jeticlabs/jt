@@ -42,6 +42,7 @@ interface NavChild {
     label: string;
     segment: string;
     icon: ReactNode;
+    permission: string;
 }
 
 interface NavItem {
@@ -49,6 +50,7 @@ interface NavItem {
     label: string;
     segment?: string;
     icon: ReactNode;
+    permission: string;
     children?: NavChild[];
 }
 
@@ -60,35 +62,39 @@ const NAV: NavItem[] = [
         label: "Overview",
         segment: "",
         icon: <OverviewIcon />,
+        permission: "sandbox.overview.view",
     },
     {
         id: "project",
         label: "Project",
         icon: <ProjectIcon />,
+        permission: "sandbox.source.view",
         children: [
-            { id: "source", label: "Source", segment: "source", icon: <SourceIcon /> },
-            { id: "config", label: "Config", segment: "config", icon: <ConfigIcon /> },
+            { id: "source", label: "Source", segment: "source", icon: <SourceIcon />, permission: "sandbox.source.view" },
+            { id: "config", label: "Config", segment: "config", icon: <ConfigIcon />, permission: "sandbox.config.view" },
         ],
     },
     {
         id: "runtime",
         label: "Runtime",
         icon: <RuntimeIcon />,
+        permission: "sandbox.deployments.view",
         children: [
-            { id: "deployments", label: "Deployments", segment: "deployments", icon: <DeploymentsIcon /> },
-            { id: "environment", label: "Environment", segment: "environments", icon: <EnvironmentIcon /> },
+            { id: "deployments", label: "Deployments", segment: "deployments", icon: <DeploymentsIcon />, permission: "sandbox.deployments.view" },
+            { id: "environment", label: "Environment", segment: "environments", icon: <EnvironmentIcon />, permission: "sandbox.environments.view" },
         ],
     },
     {
         id: "model",
         label: "Model",
         icon: <ModelIcon />,
+        permission: "sandbox.models.view",
         children: [
-            { id: "endpoints", label: "Endpoints", segment: "endpoints", icon: <EndpointsIcon /> },
-            { id: "schema", label: "Schema", segment: "schema", icon: <SchemaIcon /> },
-            { id: "security", label: "Security", segment: "security", icon: <SecurityIcon /> },
-            { id: "dependency", label: "Dependency", segment: "dependency", icon: <DependencyIcon /> },
-            { id: "jenkins", label: "Jenkins", segment: "jenkins", icon: <JenkinsIcon /> },
+            { id: "endpoints", label: "Endpoints", segment: "endpoints", icon: <EndpointsIcon />, permission: "sandbox.models.view" },
+            { id: "schema", label: "Schema", segment: "schema", icon: <SchemaIcon />, permission: "sandbox.models.view" },
+            { id: "security", label: "Security", segment: "security", icon: <SecurityIcon />, permission: "sandbox.security.view" },
+            { id: "dependency", label: "Dependency", segment: "dependency", icon: <DependencyIcon />, permission: "sandbox.dependencies.view" },
+            { id: "jenkins", label: "Jenkins", segment: "jenkins", icon: <JenkinsIcon />, permission: "sandbox.jenkins.view" },
         ],
     },
     {
@@ -96,21 +102,24 @@ const NAV: NavItem[] = [
         label: "Workflow",
         segment: "workflow",
         icon: <WorkflowIcon />,
+        permission: "sandbox.workflow.view",
     },
     {
         id: "simulations",
         label: "Simulations",
         segment: "simulations",
         icon: <SimulationsIcon />,
+        permission: "sandbox.simulations.view",
     },
     {
         id: "automations",
         label: "Automations",
         icon: <AutomationsIcon />,
+        permission: "sandbox.agents.view",
         children: [
-            { id: "agents", label: "Agents", segment: "agent", icon: <AgentsIcon /> },
-            { id: "workers", label: "Workers", segment: "workers", icon: <WorkersIcon /> },
-            { id: "schedules", label: "Schedules", segment: "schedules", icon: <SchedulesIcon /> },
+            { id: "agents", label: "Agents", segment: "agent", icon: <AgentsIcon />, permission: "sandbox.agents.view" },
+            { id: "workers", label: "Workers", segment: "workers", icon: <WorkersIcon />, permission: "sandbox.workers.view" },
+            { id: "schedules", label: "Schedules", segment: "schedules", icon: <SchedulesIcon />, permission: "sandbox.schedules.view" },
         ],
     },
     {
@@ -118,24 +127,28 @@ const NAV: NavItem[] = [
         label: "Tools",
         segment: "tools",
         icon: <ToolsIcon />,
+        permission: "sandbox.tools.view",
     },
     {
         id: "runs",
         label: "Runs & Traces",
         segment: "runs",
         icon: <RunsIcon />,
+        permission: "sandbox.runs.view",
     },
     {
         id: "reports",
         label: "Reports",
         segment: "reports",
         icon: <ReportsIcon />,
+        permission: "sandbox.reports.view",
     },
     {
         id: "settings",
         label: "Settings",
         segment: "settings",
         icon: <SettingsIcon />,
+        permission: "sandbox.settings.view",
     },
 ];
 
@@ -217,9 +230,10 @@ function NavRow({
 interface SidebarProps {
     collapsed?: boolean;
     loading?: boolean;
+    permissions: Readonly<Record<string, boolean>>;
 }
 
-export default function Sidebar({ collapsed = false, loading = false }: SidebarProps) {
+export default function Sidebar({ collapsed = false, loading = false, permissions }: SidebarProps) {
     const params = useParams<{ workspaceId?: string | string[]; sandboxId?: string | string[] }>();
     const pathname = usePathname() ?? "";
     const workspaceSlug = Array.isArray(params?.workspaceId)
@@ -238,16 +252,30 @@ export default function Sidebar({ collapsed = false, loading = false }: SidebarP
     const [expanded, setExpanded] = useState<Set<string>>(new Set(["project"]));
     const [query, setQuery] = useState<string>("");
 
+    const permittedNav = useMemo(() => {
+        if (permissions["sandbox.view"] === false) return [];
+        return NAV.map((item) => ({
+            ...item,
+            children: item.children?.filter(
+                (child) => permissions[child.permission] !== false,
+            ),
+        })).filter(
+            (item) =>
+                permissions[item.permission] !== false &&
+                (!item.children || item.children.length > 0),
+        );
+    }, [permissions]);
+
     const activeParentId = useMemo(
         () =>
-            NAV.find((item) =>
+            permittedNav.find((item) =>
                 item.children?.some(
                     (child) =>
                         relative === child.segment ||
                         relative.startsWith(`${child.segment}/`),
                 ),
             )?.id,
-        [relative],
+        [relative, permittedNav],
     );
 
     const openGroups = useMemo(() => {
@@ -281,7 +309,7 @@ export default function Sidebar({ collapsed = false, loading = false }: SidebarP
 
     const filtered = query.trim().toLowerCase();
 
-    const visibleItems = NAV.flatMap((item) => {
+    const visibleItems = permittedNav.flatMap((item) => {
         if (!filtered) return [item];
         const matchParent = item.label.toLowerCase().includes(filtered);
         const matchedChildren = item.children?.filter((c) =>

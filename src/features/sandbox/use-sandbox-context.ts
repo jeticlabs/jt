@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
-import { resolveWorkspaceBySlug } from "@/features/workspace/api";
+import {
+  useSandboxBySlug,
+  useWorkspaceBySlug,
+} from "@/cache";
 import { errorMessage } from "@/lib/api/browser";
-import { getSandboxBySlug } from "./sandbox.api";
 import type { Sandbox } from "./types";
 
 type LoadStatus = "loading" | "ready" | "error";
@@ -22,8 +23,8 @@ export interface SandboxContextState {
 
 /**
  * Resolves the URL slugs for a sandbox page into the organization id and the
- * full sandbox record. The API occasionally stores a sandbox by immutable id,
- * so the slug lookup endpoint accepts either the slug or the id.
+ * full sandbox record. Both lookups are shared through TanStack Query so the
+ * sandbox overview, source, and settings pages reuse the same cached data.
  */
 export function useSandboxContext(): SandboxContextState {
   const params = useParams<{
@@ -37,53 +38,47 @@ export function useSandboxContext(): SandboxContextState {
     ? (params.sandboxId[0] ?? "")
     : (params?.sandboxId ?? "");
 
-  const [organizationId, setOrganizationId] = useState<string | null>(null);
-  const [sandbox, setSandbox] = useState<Sandbox | null>(null);
-  const [status, setStatus] = useState<LoadStatus>("loading");
-  const [error, setError] = useState<string | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
-
-  useEffect(() => {
-    if (!workspaceSlug || !sandboxSlug) {
-      return;
-    }
-
-    let cancelled = false;
-
-    void (async () => {
-      setStatus("loading");
-      setError(null);
-      try {
-        const membership = await resolveWorkspaceBySlug(workspaceSlug);
-        const result = await getSandboxBySlug(
-          membership.organization.id,
-          sandboxSlug,
-        );
-        if (cancelled) return;
-        setOrganizationId(membership.organization.id);
-        setSandbox(result.sandbox);
-        setStatus("ready");
-      } catch (cause) {
-        if (cancelled) return;
-        setStatus("error");
-        setError(errorMessage(cause));
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [workspaceSlug, sandboxSlug, reloadKey]);
+  const workspaceQuery = useWorkspaceBySlug(workspaceSlug);
+  const sandboxQuery = useSandboxBySlug(workspaceSlug, sandboxSlug);
 
   const incomplete = !workspaceSlug || !sandboxSlug;
+  const sandbox = sandboxQuery.data?.sandbox ?? null;
+  const organizationId = workspaceQuery.data?.organization.id ?? null;
+
+  let status: LoadStatus = "ready";
+  if (incomplete || workspaceQuery.isError || sandboxQuery.isError) {
+    status = "error";
+  } else if (
+    workspaceQuery.isPending ||
+    sandboxQuery.isPending ||
+    (sandboxQuery.isFetching && !sandbox)
+  ) {
+    status = "loading";
+  } else if (!sandbox) {
+    status = "error";
+  }
+
+  const error =
+    incomplete
+      ? "This sandbox link is incomplete."
+      : workspaceQuery.isError
+        ? errorMessage(workspaceQuery.error)
+        : sandboxQuery.isError
+          ? errorMessage(sandboxQuery.error)
+          : !sandbox && status === "error"
+            ? "The sandbox may have been deleted or you may not have access."
+            : null;
 
   return {
     workspaceSlug,
     sandboxSlug,
     organizationId,
     sandbox,
-    status: incomplete ? "error" : status,
-    error: incomplete ? "This sandbox link is incomplete." : error,
-    reload: () => setReloadKey((value) => value + 1),
+    status,
+    error,
+    reload: () => {
+      void workspaceQuery.refetch();
+      void sandboxQuery.refetch();
+    },
   };
 }

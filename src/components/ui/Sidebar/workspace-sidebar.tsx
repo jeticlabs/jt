@@ -22,15 +22,16 @@ interface WorkspaceNavItem {
   segment: string;
   icon: ReactNode;
   exact?: boolean;
+  permission: string;
 }
 
 const NAV: WorkspaceNavItem[] = [
-  { label: "Overview", segment: "", icon: <OverviewIcon />, exact: true },
-  { label: "Activity", segment: "activity", icon: <ActivityIcon /> },
-  { label: "Integrations", segment: "integrations", icon: <IntegrationsIcon /> },
-  { label: "Members", segment: "members", icon: <MembersIcon /> },
-  { label: "Billing & Usage", segment: "billing", icon: <BillingIcon /> },
-  { label: "Settings", segment: "settings", icon: <SettingsIcon /> },
+  { label: "Overview", segment: "", icon: <OverviewIcon />, exact: true, permission: "workspace.view" },
+  { label: "Activity", segment: "activity", icon: <ActivityIcon />, permission: "workspace.activity.view" },
+  { label: "Integrations", segment: "integrations", icon: <IntegrationsIcon />, permission: "workspace.integrations.view" },
+  { label: "Members", segment: "members", icon: <MembersIcon />, permission: "workspace.members.view" },
+  { label: "Billing & Usage", segment: "billing", icon: <BillingIcon />, permission: "workspace.billing.view" },
+  { label: "Settings", segment: "settings", icon: <SettingsIcon />, permission: "workspace.settings.view" },
 ];
 
 /* ---------- Component ---------- */
@@ -39,15 +40,20 @@ interface WorkspaceSidebarProps {
   workspaceId: string;
   workspaceName?: string;
   collapsed?: boolean;
+  permissions: Readonly<Record<string, boolean>>;
 }
 
 export default function WorkspaceSidebar({
   workspaceId,
   workspaceName,
   collapsed = false,
+  permissions,
 }: WorkspaceSidebarProps) {
   const pathname = usePathname() ?? "";
   const base = `/app/workspace/${workspaceId}`;
+  const visibleNav = NAV.filter(
+    (item) => permissions[item.permission] !== false,
+  );
 
   return (
     <SidebarShell collapsed={collapsed} aria-label="Workspace">
@@ -77,7 +83,7 @@ export default function WorkspaceSidebar({
         }`}
       >
         <ul className="flex flex-col gap-0.5">
-          {NAV.map((item) => {
+          {visibleNav.map((item) => {
             const href = item.segment ? `${base}/${item.segment}` : base;
             const active = item.exact
               ? pathname === href

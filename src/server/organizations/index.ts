@@ -7,6 +7,11 @@ import type {
   PageResponse,
   WorkspaceSummary,
 } from "@/features/workspace/types";
+import type {
+  MemberPermissions,
+  MyPermissions,
+} from "@/features/permissions/types";
+import type { Sandbox } from "@/features/sandbox/types";
 import { BackendError, backendFetch } from "@/server/api/backend";
 
 const ORGANIZATIONS_PAGE_SIZE = 100;
@@ -87,6 +92,48 @@ export async function listPendingInvitations(
 ): Promise<Invitation[]> {
   const page = await backendFetch<PageResponse<Invitation>>(
     `/v1/organizations/${encodeURIComponent(organizationId)}/invitations?status=pending&limit=${MEMBERS_PAGE_SIZE}`,
+    token,
+  );
+  return page.data;
+}
+
+export async function getMyPermissions(
+  token: string,
+  organizationId: string,
+  sandboxId?: string | null,
+): Promise<MyPermissions> {
+  const query = sandboxId
+    ? `?sandboxId=${encodeURIComponent(sandboxId)}`
+    : "";
+  return backendFetch<MyPermissions>(
+    `/v1/organizations/${encodeURIComponent(organizationId)}/permissions/me${query}`,
+    token,
+  );
+}
+
+export async function getMemberPermissions(
+  token: string,
+  organizationId: string,
+  memberId: string,
+  sandboxId?: string | null,
+): Promise<MemberPermissions> {
+  const query = sandboxId
+    ? `?sandboxId=${encodeURIComponent(sandboxId)}`
+    : "";
+  return backendFetch<MemberPermissions>(
+    `/v1/organizations/${encodeURIComponent(organizationId)}/permissions/members/${encodeURIComponent(memberId)}${query}`,
+    token,
+  );
+}
+
+export async function listWorkspaceSandboxes(
+  token: string,
+  organizationId: string,
+): Promise<Sandbox[]> {
+  const page = await backendFetch<
+    PageResponse<Sandbox>
+  >(
+    `/v1/organizations/${encodeURIComponent(organizationId)}/sandboxes?limit=100`,
     token,
   );
   return page.data;

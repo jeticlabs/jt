@@ -4,6 +4,12 @@ export {
   useWorkspaceBySlug,
   useWorkspaceSandboxes,
   useSandboxList,
+  useWorkspaceMembers,
+  useWorkspaceInvitations,
+  useWorkspacePermissions,
+  useSandboxBySlug,
+  useSandboxPermissions,
+  useMemberPermissions,
 } from "./queries/workspace";
 export {
   useActivityFeed,

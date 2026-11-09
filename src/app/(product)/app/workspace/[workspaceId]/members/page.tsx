@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { requireAuthContext } from "@/server/auth/session";
 import {
+  getMyPermissions,
   listPendingInvitations,
   listWorkspaceMembers,
   resolveWorkspace,
@@ -24,9 +25,10 @@ export default async function MembersPage({
     notFound();
   }
 
-  const [members, invitations] = await Promise.all([
+  const [members, invitations, permissions] = await Promise.all([
     listWorkspaceMembers(context.token, workspace.id),
     listPendingInvitations(context.token, workspace.id),
+    getMyPermissions(context.token, workspace.id),
   ]);
 
   return (
@@ -38,6 +40,7 @@ export default async function MembersPage({
       role={workspace.role}
       members={members}
       invitations={invitations}
+      permissions={permissions.permissions}
     />
   );
 }

@@ -7,8 +7,8 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   ArrowUpRight,
   Ban,
@@ -19,10 +19,13 @@ import {
   MoreHorizontal,
   Plus,
   Search,
+  ShieldCheck,
   Trash2,
   X,
 } from "lucide-react";
 
+import { useWorkspaceInvitations, useWorkspaceMembers } from "@/cache";
+import { queryKeys } from "@/cache/query-keys";
 import type {
   Invitation,
   Member,
@@ -242,6 +245,7 @@ interface MembersClientProps {
   role: OrganizationRole;
   members: Member[];
   invitations: Invitation[];
+  permissions: Readonly<Record<string, boolean>>;
 }
 
 export function MembersClient({
@@ -250,13 +254,39 @@ export function MembersClient({
   plan,
   currentUserId,
   role,
-  members,
-  invitations,
+  members: initialMembers,
+  invitations: initialInvitations,
+  permissions,
 }: MembersClientProps) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
+  const membersQuery = useWorkspaceMembers(workspaceSlug, initialMembers);
+  const invitationsQuery = useWorkspaceInvitations(
+    workspaceSlug,
+    initialInvitations,
+  );
+  const members = membersQuery.members;
+  const invitations = invitationsQuery.invitations;
   const base = `/v1/organizations/${encodeURIComponent(organizationId)}`;
-  const canManage = role === "owner" || role === "admin";
+  const canInvite = permissions["workspace.members.invite"] === true;
+  const canChangeRoles = permissions["workspace.members.role"] === true;
+  const canRemove = permissions["workspace.members.remove"] === true;
+  const canCancelInvitations =
+    permissions["workspace.invitations.cancel"] === true;
+  const canManagePermissions =
+    permissions["workspace.permissions.manage_members"] === true ||
+    permissions["workspace.permissions.manage_admins"] === true;
   const availableRoles = roleOptions(role);
+
+  const refreshMembers = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.workspaceMembers(workspaceSlug),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.workspaceInvitations(workspaceSlug),
+      }),
+    ]);
+  };
 
   const [tab, setTab] = useState<Tab>("members");
   const [rows, setRows] = useState<InviteRow[]>([
@@ -377,14 +407,24 @@ export function MembersClient({
     });
   };
 
-  const canEditMember = (member: Member): boolean =>
-    canManage &&
+  const canEditRole = (member: Member): boolean =>
+    canChangeRoles &&
     member.userId !== currentUserId &&
     !(member.role === "owner" && role !== "owner");
 
+  const canEditRemove = (member: Member): boolean =>
+    canRemove &&
+    member.userId !== currentUserId &&
+    !(member.role === "owner" && role !== "owner");
+
+  const canEditPermissions = (member: Member): boolean =>
+    canManagePermissions &&
+    member.userId !== currentUserId &&
+    member.role !== "owner";
+
   const sendInvites = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!canManage || inviting) return;
+    if (!canInvite || inviting) return;
 
     const pending = rows
       .map((row) => ({ ...row, email: row.email.trim() }))
@@ -408,7 +448,7 @@ export function MembersClient({
           : `${pending.length} invitations sent.`,
       );
       setTab("pending");
-      router.refresh();
+      await refreshMembers();
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
@@ -417,7 +457,7 @@ export function MembersClient({
   };
 
   const updateRole = async (member: Member, nextRole: OrganizationRole) => {
-    if (!canManage || nextRole === member.role || busyId) return;
+    if (!canChangeRoles || nextRole === member.role || busyId) return;
     setBusyId(member.id);
     setError(null);
     setNotice(null);
@@ -426,7 +466,7 @@ export function MembersClient({
         method: "PATCH",
         body: { role: nextRole },
       });
-      router.refresh();
+      await refreshMembers();
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
@@ -435,7 +475,7 @@ export function MembersClient({
   };
 
   const removeMember = async () => {
-    if (!confirmRemove || removing) return;
+    if (!confirmRemove || removing || !canRemove) return;
     setRemoving(true);
     setError(null);
     setNotice(null);
@@ -444,7 +484,7 @@ export function MembersClient({
         method: "DELETE",
       });
       setConfirmRemove(null);
-      router.refresh();
+      await refreshMembers();
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
@@ -460,7 +500,7 @@ export function MembersClient({
       await apiFetch(`${base}/invitations/${encodeURIComponent(invitation.id)}`, {
         method: "DELETE",
       });
-      router.refresh();
+      await refreshMembers();
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
@@ -504,7 +544,7 @@ export function MembersClient({
         </header>
 
         <section className="jetic-card mt-5 rounded-lg bg-[var(--jetic-bg)]">
-          {canManage ? (
+          {canInvite ? (
             <form onSubmit={sendInvites}>
               <div className="p-5">
                 <h2 className="text-[18px] font-semibold tracking-tight text-white">
@@ -625,7 +665,7 @@ export function MembersClient({
                 Invite Members
               </h2>
               <p className="jetic-muted mt-1 text-[12px]">
-                Only admins and owners can invite or manage members.
+                You do not have permission to invite members.
               </p>
             </div>
           )}
@@ -768,7 +808,9 @@ export function MembersClient({
               </p>
             ) : (
               filteredMembers.map((member) => {
-                const editable = canEditMember(member);
+                const editableRole = canEditRole(member);
+                const editableRemove = canEditRemove(member);
+                const editablePermissions = canEditPermissions(member);
                 return (
                   <div
                     key={member.id}
@@ -806,7 +848,7 @@ export function MembersClient({
                       <Menu label={`Actions for ${member.user.name}`}>
                         {(close) => (
                           <>
-                            {editable &&
+                            {editableRole &&
                               availableRoles
                                 .filter((option) => option !== member.role)
                                 .map((option) => (
@@ -820,7 +862,18 @@ export function MembersClient({
                                     Make {ROLE_LABELS[option].toLowerCase()}
                                   </MenuItem>
                                 ))}
-                            {editable && <div className="my-1 h-px bg-white/10" />}
+                            {editableRole && <div className="my-1 h-px bg-white/10" />}
+                            {editablePermissions && (
+                              <Link
+                                href={`/app/workspace/${encodeURIComponent(workspaceSlug)}/members/${encodeURIComponent(member.id)}/permissions`}
+                                onClick={close}
+                                className="jetic-menu-item"
+                                role="menuitem"
+                              >
+                                <ShieldCheck size={14} />
+                                <span className="flex-1 text-left">Permissions</span>
+                              </Link>
+                            )}
                             <MenuItem
                               icon={<Copy size={14} />}
                               onClick={() => {
@@ -830,7 +883,7 @@ export function MembersClient({
                             >
                               Copy email
                             </MenuItem>
-                            {editable && (
+                            {editableRemove && (
                               <MenuItem
                                 danger
                                 icon={<Trash2 size={14} />}
@@ -933,7 +986,7 @@ export function MembersClient({
                                 Copy link
                               </MenuItem>
                             )}
-                            {canManage && (
+                            {canCancelInvitations && (
                               <MenuItem
                                 danger
                                 icon={<X size={14} />}

@@ -36,6 +36,7 @@ interface WorkspaceChromeProps {
   user: ToolbarUser;
   workspace: ToolbarWorkspace;
   workspaces: ToolbarWorkspace[];
+  permissions: Readonly<Record<string, boolean>>;
   children: ReactNode;
 }
 
@@ -51,6 +52,7 @@ export function WorkspaceChrome({
   user,
   workspace,
   workspaces,
+  permissions,
   children,
 }: WorkspaceChromeProps) {
   const [collapsed, setCollapsed] = useState(false);
@@ -66,7 +68,10 @@ export function WorkspaceChrome({
 
         <div className="flex min-h-0 w-full flex-1">
           <Suspense fallback={<SidebarFallback />}>
-            <SidebarOutlet workspaceName={workspace.name} />
+            <SidebarOutlet
+              workspaceName={workspace.name}
+              permissions={permissions}
+            />
           </Suspense>
 
           <div className="min-w-0 flex-1 overflow-y-auto">{children}</div>
@@ -125,7 +130,13 @@ function ChromeToolbar({
   );
 }
 
-function SidebarOutlet({ workspaceName }: { workspaceName: string }) {
+function SidebarOutlet({
+  workspaceName,
+  permissions,
+}: {
+  workspaceName: string;
+  permissions: Readonly<Record<string, boolean>>;
+}) {
   const workspaceId = useWorkspaceId();
   const pathname = usePathname() ?? "";
   const { collapsed } = useChrome();
@@ -133,12 +144,13 @@ function SidebarOutlet({ workspaceName }: { workspaceName: string }) {
   const isSandbox = /^\/app\/workspace\/[^/]+\/sandbox(\/|$)/.test(pathname);
 
   return isSandbox ? (
-    <Sidebar collapsed={collapsed} />
+    <Sidebar collapsed={collapsed} permissions={permissions} />
   ) : (
     <WorkspaceSidebar
       workspaceId={workspaceId}
       workspaceName={workspaceName}
       collapsed={collapsed}
+      permissions={permissions}
     />
   );
 }
@@ -155,5 +167,5 @@ function ToolbarFallback() {
 
 function SidebarFallback() {
   const { collapsed } = useChrome();
-  return <Sidebar loading collapsed={collapsed} />;
+  return <Sidebar loading collapsed={collapsed} permissions={{}} />;
 }

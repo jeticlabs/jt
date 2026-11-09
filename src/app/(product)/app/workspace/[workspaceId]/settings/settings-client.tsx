@@ -2,12 +2,34 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 
+import { useWorkspaceBySlug, useWorkspacePermissions } from "@/cache";
+import { queryKeys } from "@/cache/query-keys";
 import { ImageUploadButton } from "@/components/ui/image-upload-button";
-import type { Plan, WorkspaceSummary } from "@/features/workspace/types";
+import type { MyPermissions } from "@/features/permissions/types";
+import type {
+  OrganizationMembership,
+  Plan,
+  WorkspaceSummary,
+} from "@/features/workspace/types";
 import { isValidSlug } from "@/features/workspace/slug";
 import { useSlugAvailability } from "@/features/workspace/use-slug-availability";
 import { apiFetch, errorMessage } from "@/lib/api/browser";
+
+function toWorkspaceSummary(
+  membership: OrganizationMembership,
+): WorkspaceSummary {
+  return {
+    id: membership.organization.id,
+    name: membership.organization.name,
+    slug: membership.organization.slug,
+    plan: membership.organization.plan,
+    logo: membership.organization.logo,
+    role: membership.role,
+    memberId: membership.memberId,
+  };
+}
 
 /* ------------------------------ Primitives ------------------------------ */
 
@@ -84,10 +106,43 @@ const PLANS: { id: Plan; label: string; description: string }[] = [
   { id: "pro", label: "Pro", description: "Commercial projects with the full feature set." },
 ];
 
-export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
+export function SettingsClient({
+  workspace: initialWorkspace,
+  initialMembership,
+  initialPermissions,
+}: {
+  workspace: WorkspaceSummary;
+  initialMembership?: OrganizationMembership | null;
+  initialPermissions?: MyPermissions;
+}) {
   const router = useRouter();
-  const isOwner = workspace.role === "owner";
+  const queryClient = useQueryClient();
+  const workspaceQuery = useWorkspaceBySlug(
+    initialWorkspace.slug,
+    initialMembership ?? undefined,
+  );
+  const permissionsQuery = useWorkspacePermissions(
+    initialWorkspace.slug,
+    initialPermissions,
+  );
+  const workspace = workspaceQuery.data
+    ? toWorkspaceSummary(workspaceQuery.data)
+    : initialWorkspace;
+  const permissions =
+    permissionsQuery.data?.permissions ?? initialPermissions?.permissions ?? {};
+  const canManage = permissions["workspace.settings.manage"] === true;
   const base = `/v1/organizations/${encodeURIComponent(workspace.id)}`;
+
+  const refreshWorkspace = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.workspace(workspace.slug),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.workspacePermissions(workspace.slug),
+      }),
+    ]);
+  };
 
   const [name, setName] = useState(workspace.name);
   const [slug, setSlug] = useState(workspace.slug);
@@ -116,7 +171,7 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
       ? availability.status
       : "checking";
   const canSaveSlug =
-    isOwner &&
+    canManage &&
     slugDirty &&
     isValidSlug(slug) &&
     slugStatus === "available" &&
@@ -132,7 +187,7 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
   }, [deleteOpen]);
 
   const saveName = async () => {
-    if (!isOwner || trimmedName.length === 0 || trimmedName === savedName) return;
+    if (!canManage || trimmedName.length === 0 || trimmedName === savedName) return;
     setBusy("name");
     setError(null);
     setNotice(null);
@@ -141,7 +196,7 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
       setSavedName(trimmedName);
       setName(trimmedName);
       setNotice("Workspace name updated.");
-      router.refresh();
+      void refreshWorkspace();
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
@@ -159,7 +214,7 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
       setSavedSlug(slug);
       setNotice("Workspace URL updated.");
       router.push(`/app/workspace/${encodeURIComponent(slug)}/settings`);
-      router.refresh();
+      void refreshWorkspace();
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
@@ -168,7 +223,7 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
   };
 
   const savePlan = async () => {
-    if (!isOwner || plan === savedPlan) return;
+    if (!canManage || plan === savedPlan) return;
     setBusy("plan");
     setError(null);
     setNotice(null);
@@ -176,7 +231,7 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
       await apiFetch(base, { method: "PATCH", body: { plan } });
       setSavedPlan(plan);
       setNotice(`Workspace switched to the ${plan === "pro" ? "Pro" : "Hobby"} plan.`);
-      router.refresh();
+      void refreshWorkspace();
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
@@ -185,7 +240,7 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
   };
 
   const removeLogo = async () => {
-    if (!isOwner || busy !== null) return;
+    if (!canManage || busy !== null) return;
     setBusy("logo");
     setError(null);
     setNotice(null);
@@ -193,7 +248,7 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
       await apiFetch(base, { method: "PATCH", body: { logo: null } });
       setLogo(null);
       setNotice("Workspace icon removed.");
-      router.refresh();
+      void refreshWorkspace();
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
@@ -202,14 +257,14 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
   };
 
   const deleteWorkspace = async () => {
-    if (!isOwner || deleteConfirm !== workspace.name) return;
+    if (!canManage || deleteConfirm !== workspace.name) return;
     setBusy("delete");
     setError(null);
     setNotice(null);
     try {
       await apiFetch(base, { method: "DELETE" });
       router.push("/app");
-      router.refresh();
+      void refreshWorkspace();
     } catch (cause) {
       setError(errorMessage(cause));
       setBusy(null);
@@ -257,7 +312,7 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
           description="Upload an image that represents this workspace across Jetic."
           footer={
             <span>
-              {isOwner
+              {canManage
                 ? "PNG, JPG, WebP, or GIF up to 4 MB."
                 : "Only owners can change the workspace icon."}
             </span>
@@ -279,12 +334,12 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
               <ImageUploadButton
                 endpoint="workspaceIcon"
                 input={{ organizationId: workspace.id }}
-                disabled={!isOwner}
+                disabled={!canManage}
                 onUploaded={(url) => {
                   setLogo(url);
                   setError(null);
                   setNotice("Workspace icon updated.");
-                  router.refresh();
+                  void refreshWorkspace();
                 }}
                 onError={(message) => {
                   setNotice(null);
@@ -293,7 +348,7 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
               >
                 Upload icon
               </ImageUploadButton>
-              {logo && isOwner && (
+              {logo && canManage && (
                 <button
                   type="button"
                   onClick={() => void removeLogo()}
@@ -315,7 +370,7 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
               <span>Up to 100 characters.</span>
               <Button
                 disabled={
-                  !isOwner ||
+                  !canManage ||
                   busy !== null ||
                   trimmedName.length === 0 ||
                   trimmedName === savedName
@@ -330,7 +385,7 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
           <input
             value={name}
             maxLength={100}
-            disabled={!isOwner}
+            disabled={!canManage}
             onChange={(event) => {
               setName(event.target.value);
               setError(null);
@@ -347,7 +402,7 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
           footer={
             <>
               <span>
-                {!isOwner
+                {!canManage
                   ? "Only owners can change the workspace URL."
                   : slugStatus === "taken"
                     ? "That URL is already taken."
@@ -368,7 +423,7 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
             <input
               value={slug}
               maxLength={50}
-              disabled={!isOwner}
+              disabled={!canManage}
               onChange={(event) => {
                 setSlug(event.target.value.toLowerCase().replace(/\s+/g, "-"));
                 setError(null);
@@ -408,12 +463,12 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
           footer={
             <>
               <span>
-                {isOwner
+                {canManage
                   ? "Plan changes apply immediately."
                   : "Only owners can change the plan."}
               </span>
               <Button
-                disabled={!isOwner || busy !== null || plan === savedPlan}
+                disabled={!canManage || busy !== null || plan === savedPlan}
                 onClick={() => void savePlan()}
               >
                 {busy === "plan" ? "Saving…" : "Save plan"}
@@ -428,7 +483,7 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
                 <button
                   key={option.id}
                   type="button"
-                  disabled={!isOwner}
+                  disabled={!canManage}
                   aria-pressed={selected}
                   onClick={() => {
                     setPlan(option.id);
@@ -507,13 +562,13 @@ export function SettingsClient({ workspace }: { workspace: WorkspaceSummary }) {
           footer={
             <>
               <span>
-                {isOwner
+                {canManage
                   ? "You will be redirected to your next workspace."
                   : "Only owners can delete this workspace."}
               </span>
               <Button
                 danger
-                disabled={!isOwner || busy !== null}
+                disabled={!canManage || busy !== null}
                 onClick={() => {
                   setDeleteConfirm("");
                   setDeleteOpen(true);

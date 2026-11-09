@@ -1,7 +1,7 @@
 "use client";
 
-import { SandboxSectionPlaceholder } from "@/components/ui/sandbox/sandbox-section-placeholder";
+import { SandboxSettingsClient } from "./settings-client";
 
 export default function SandboxSettingsPage() {
-  return <SandboxSectionPlaceholder section="settings" />;
+  return <SandboxSettingsClient />;
 }

@@ -83,6 +83,59 @@ export function stopSandbox(
   );
 }
 
+export interface UpdateSandboxPayload {
+  readonly name?: string;
+  readonly slug?: string;
+  readonly description?: string | null;
+  readonly branch?: string;
+  readonly rootDirectory?: string;
+  readonly language?: string | null;
+  readonly framework?: string | null;
+  readonly buildCommand?: string | null;
+  readonly outputDirectory?: string | null;
+}
+
+export function updateSandbox(
+  organizationId: string,
+  sandboxId: string,
+  payload: UpdateSandboxPayload,
+): Promise<SandboxEnvelope> {
+  return apiFetch<SandboxEnvelope>(
+    `/v1/organizations/${encodeURIComponent(organizationId)}/sandboxes/${encodeURIComponent(sandboxId)}`,
+    { method: "PATCH", body: payload },
+  );
+}
+
+export function deleteSandbox(
+  organizationId: string,
+  sandboxId: string,
+): Promise<void> {
+  return apiFetch<void>(
+    `/v1/organizations/${encodeURIComponent(organizationId)}/sandboxes/${encodeURIComponent(sandboxId)}`,
+    { method: "DELETE" },
+  );
+}
+
+export function archiveSandbox(
+  organizationId: string,
+  sandboxId: string,
+): Promise<SandboxEnvelope> {
+  return apiFetch<SandboxEnvelope>(
+    `/v1/organizations/${encodeURIComponent(organizationId)}/sandboxes/${encodeURIComponent(sandboxId)}/archive`,
+    { method: "POST" },
+  );
+}
+
+export function restoreSandbox(
+  organizationId: string,
+  sandboxId: string,
+): Promise<SandboxEnvelope> {
+  return apiFetch<SandboxEnvelope>(
+    `/v1/organizations/${encodeURIComponent(organizationId)}/sandboxes/${encodeURIComponent(sandboxId)}/restore`,
+    { method: "POST" },
+  );
+}
+
 export function listSandboxes(
   organizationId: string,
   query: { limit?: number; cursor?: string; status?: string } = {},

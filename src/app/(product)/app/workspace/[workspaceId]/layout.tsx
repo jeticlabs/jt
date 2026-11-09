@@ -6,6 +6,7 @@ import { WorkspaceChrome } from "@/components/ui/WorkspaceChrome/workspace-chrom
 import { requireAuthContext } from "@/server/auth/session";
 import {
   findWorkspaceById,
+  getMyPermissions,
   listWorkspaces,
   resolveWorkspace,
 } from "@/server/organizations";
@@ -52,6 +53,8 @@ export default async function WorkspaceLayout({
     redirect(`/app/workspace/${encodeURIComponent(workspace.slug)}`);
   }
 
+  const permissions = await getMyPermissions(context.token, workspace.id);
+
   return (
     <div className={`${inter.className} h-full w-full bg-[#111111]`}>
       <StateProvider>
@@ -63,6 +66,7 @@ export default async function WorkspaceLayout({
           }}
           workspace={workspace}
           workspaces={allWorkspaces}
+          permissions={permissions.permissions}
         >
           {children}
         </WorkspaceChrome>
