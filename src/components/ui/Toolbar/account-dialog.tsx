@@ -1262,6 +1262,7 @@ function ConnectedAccountsPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const githubConnection = useUserStore((state) => state.github);
 
   const connect = () => {
     const next = window.location.pathname;
@@ -1289,7 +1290,9 @@ function ConnectedAccountsPanel({
   };
 
   const connected = user.githubId !== null;
-  const needsReconnect = connected && !user.githubCredentialsStored;
+  const credentialsStored =
+    githubConnection?.credentialsStored ?? user.githubCredentialsStored;
+  const needsReconnect = connected && !credentialsStored;
   const profileUrl =
     user.githubUsername !== null
       ? `https://github.com/${encodeURIComponent(user.githubUsername)}`

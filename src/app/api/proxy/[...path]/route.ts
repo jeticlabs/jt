@@ -11,15 +11,25 @@ const UNAUTHORIZED = {
   code: "UNAUTHORIZED",
 };
 
+function firstHeader(value: string | null): string | null {
+  if (!value) return null;
+  const first = value.split(",")[0]?.trim();
+  return first && first.length > 0 ? first : null;
+}
+
+function clientIp(request: NextRequest): string | null {
+  return (
+    firstHeader(request.headers.get("x-forwarded-for")) ??
+    firstHeader(request.headers.get("x-real-ip")) ??
+    firstHeader(request.headers.get("cf-connecting-ip")) ??
+    firstHeader(request.headers.get("true-client-ip"))
+  );
+}
+
 async function proxyRequest(
   request: NextRequest,
   context: { params: Promise<{ path: string[] }> },
 ): Promise<NextResponse> {
-  const token = await getSessionToken();
-  if (!token) {
-    return NextResponse.json(UNAUTHORIZED, { status: 401 });
-  }
-
   const { path } = await context.params;
   if (path[0] !== "v1") {
     return NextResponse.json(
@@ -28,23 +38,23 @@ async function proxyRequest(
     );
   }
 
-  const target = `/${path.join("/")}${request.nextUrl.search}`;
+  const targetPath = path.join("/");
+  const token = await getSessionToken();
+  if (!token) {
+    return NextResponse.json(UNAUTHORIZED, { status: 401 });
+  }
+
+  const target = `/${targetPath}${request.nextUrl.search}`;
   const requestHeaders: Record<string, string> = {
     accept: request.headers.get("accept") ?? "application/json",
   };
 
-  // The API otherwise sees this Next.js process as the client (::1 locally).
-  // Forward the original client address; the API trusts one proxy hop.
-  const forwardedFor = request.headers
-    .get("x-forwarded-for")
-    ?.split(",")[0]
-    ?.trim();
-  const clientIp =
-    forwardedFor ||
-    request.headers.get("x-real-ip")?.trim() ||
-    request.headers.get("cf-connecting-ip")?.trim();
-  if (clientIp) {
-    requestHeaders["x-forwarded-for"] = clientIp;
+  // The API otherwise sees this Next.js process as the client. Forward the
+  // original client address; the API trusts exactly one proxy hop.
+  const ip = clientIp(request);
+  if (ip) {
+    requestHeaders["x-forwarded-for"] = ip;
+    requestHeaders["x-real-ip"] = ip;
   }
 
   const init: RequestInit = { method: request.method, headers: requestHeaders };
