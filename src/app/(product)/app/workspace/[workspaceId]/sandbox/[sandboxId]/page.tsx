@@ -328,7 +328,9 @@ export default function SandboxOverviewPage() {
       setEvents((current) =>
         current.some((item) => item.id === event.id)
           ? current
-          : [event, ...current].slice(0, 6),
+          : [event, ...current]
+              .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+              .slice(0, 6),
       );
     },
   });

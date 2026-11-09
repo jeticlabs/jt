@@ -62,7 +62,20 @@ export const useUserStore = create<UserState>((set, get) => ({
 
   async refreshGithub() {
     try {
-      set({ github: await fetchGithubConnection() });
+      const github = await fetchGithubConnection();
+      const current = get().user;
+      set({
+        github,
+        ...(current === null
+          ? {}
+          : {
+              user: {
+                ...current,
+                githubUsername: github.username,
+                githubCredentialsStored: github.credentialsStored,
+              },
+            }),
+      });
     } catch (error) {
       set({ error: errorMessage(error) });
     }
@@ -94,5 +107,7 @@ export function selectGithubConnected(state: UserState): boolean {
 }
 
 export function selectGithubReady(state: UserState): boolean {
-  return Boolean(state.github?.credentialsStored);
+  return Boolean(
+    state.github?.credentialsStored ?? state.user?.githubCredentialsStored,
+  );
 }

@@ -4,10 +4,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
-import { listSandboxes } from "@/features/sandbox/sandbox.api";
+import { useSandboxList } from "@/cache";
 import type { Sandbox, SandboxStatus } from "@/features/sandbox/types";
-import { resolveWorkspaceBySlug } from "@/features/workspace/api";
-import type { PageMeta } from "@/features/workspace/types";
 import { errorMessage } from "@/lib/api/browser";
 
 /* ------------------------------- Icons ---------------------------------- */
@@ -390,8 +388,6 @@ const secondaryControl =
 const primaryControl =
   "bg-white text-black transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40";
 
-type LoadState = "loading" | "ready" | "error";
-
 export default function DashboardPage() {
   const params = useParams<{ workspaceId?: string | string[] }>();
   const workspaceSlug = Array.isArray(params?.workspaceId)
@@ -401,20 +397,13 @@ export default function DashboardPage() {
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [usageOpen, setUsageOpen] = useState(false);
-  const [sandboxes, setSandboxes] = useState<Sandbox[]>([]);
-  const [page, setPage] = useState<PageMeta>({ nextCursor: null, hasMore: false });
-  const [organizationId, setOrganizationId] = useState<string | null>(null);
-  const [state, setState] = useState<LoadState>("loading");
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement;
-      if (e.key === "/" && !["INPUT", "TEXTAREA"].includes(t.tagName)) {
-        e.preventDefault();
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      if (event.key === "/" && !["INPUT", "TEXTAREA"].includes(target.tagName)) {
+        event.preventDefault();
         searchRef.current?.focus();
       }
     };
@@ -422,53 +411,18 @@ export default function DashboardPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  useEffect(() => {
-    if (!workspaceSlug) return;
-    let cancelled = false;
+  const {
+    sandboxes,
+    isPending,
+    isError,
+    error,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useSandboxList(workspaceSlug);
 
-    const load = async () => {
-      setState("loading");
-      setLoadError(null);
-      try {
-        const membership = await resolveWorkspaceBySlug(workspaceSlug);
-        const result = await listSandboxes(membership.organization.id, {
-          limit: 100,
-        });
-        if (cancelled) return;
-        setOrganizationId(membership.organization.id);
-        setSandboxes(result.data);
-        setPage(result.page);
-        setState("ready");
-      } catch (error) {
-        if (cancelled) return;
-        setState("error");
-        setLoadError(errorMessage(error));
-      }
-    };
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [workspaceSlug, reloadKey]);
-
-  const loadMore = async () => {
-    if (!organizationId || !page.nextCursor || loadingMore) return;
-    setLoadingMore(true);
-    setLoadError(null);
-    try {
-      const result = await listSandboxes(organizationId, {
-        limit: 100,
-        cursor: page.nextCursor,
-      });
-      setSandboxes((current) => [...current, ...result.data]);
-      setPage(result.page);
-    } catch (error) {
-      setLoadError(errorMessage(error));
-    } finally {
-      setLoadingMore(false);
-    }
-  };
+  const loadError = isError ? errorMessage(error) : null;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -650,12 +604,12 @@ export default function DashboardPage() {
                 view === "grid" ? "sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"
               }`}
             >
-              {state === "loading" &&
+              {isPending &&
                 Array.from({ length: 6 }).map((_, index) => (
                   <SandboxSkeleton key={index} />
                 ))}
 
-              {state === "error" && (
+              {isError && (
                 <div className="jetic-card col-span-full flex flex-col items-center gap-3 rounded-lg bg-[var(--jetic-bg)] px-6 py-10 text-center">
                   <span className="text-[13px] font-semibold text-red-300">
                     Sandboxes could not be loaded
@@ -665,7 +619,7 @@ export default function DashboardPage() {
                   </p>
                   <button
                     type="button"
-                    onClick={() => setReloadKey((value) => value + 1)}
+                    onClick={() => void refetch()}
                     className={`h-8 rounded-md px-3 text-[12px] font-medium ${secondaryControl}`}
                   >
                     Retry
@@ -673,7 +627,8 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {state === "ready" &&
+              {!isPending &&
+                !isError &&
                 filtered.map((sandbox) => (
                   <SandboxCard
                     key={sandbox.id}
@@ -683,7 +638,7 @@ export default function DashboardPage() {
                 ))}
             </div>
 
-            {state === "ready" && filtered.length === 0 && (
+            {!isPending && !isError && filtered.length === 0 && (
               <div className="jetic-card mt-3 flex flex-col items-center gap-2 rounded-lg border-dashed bg-[var(--jetic-bg)] px-6 py-12 text-center">
                 <p className="text-[13px] font-semibold text-white">
                   {query ? "No sandboxes match your search" : "No sandboxes yet"}
@@ -696,20 +651,14 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {state === "ready" && loadError && (
-              <p role="alert" className="mt-3 text-center text-[12px] text-red-300">
-                {loadError}
-              </p>
-            )}
-
-            {state === "ready" && page.hasMore && !query && (
+            {hasNextPage && !query && (
               <button
                 type="button"
-                onClick={() => void loadMore()}
-                disabled={loadingMore}
+                onClick={() => void fetchNextPage()}
+                disabled={isFetchingNextPage}
                 className={`mt-4 h-8 w-full rounded-md text-[12px] font-medium disabled:cursor-not-allowed disabled:opacity-50 ${secondaryControl}`}
               >
-                {loadingMore ? "Loading…" : "Show More"}
+                {isFetchingNextPage ? "Loading…" : "Show More"}
               </button>
             )}
           </section>

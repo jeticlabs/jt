@@ -11,7 +11,33 @@ import { useUserStore } from "../stores/user-store";
  */
 export function StateProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
-    void useUserStore.getState().load();
+    const params = new URLSearchParams(window.location.search);
+    const justConnected = params.get("github") === "connected";
+    if (justConnected) {
+      params.delete("github");
+      const query = params.toString();
+      window.history.replaceState(
+        {},
+        "",
+        `${window.location.pathname}${query ? `?${query}` : ""}`,
+      );
+    }
+
+    void useUserStore.getState().load({ force: justConnected });
+
+    const refresh = () => {
+      void useUserStore.getState().refreshGithub();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, []);
 
   return <>{children}</>;

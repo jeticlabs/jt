@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Check, ChevronsUpDown, Plus, PlusIcon } from "lucide-react";
 
 import { inter } from "@/app/fonts";
+import { useSandboxList } from "@/cache";
 import type { OrganizationRole, Plan } from "@/features/workspace/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch, errorMessage } from "@/lib/api/browser";
@@ -208,6 +209,7 @@ interface SwitcherProps {
     onCreate: () => void;
     createLabel: string;
     searchPlaceholder: string;
+    currentHref?: string;
     disabled?: boolean;
 }
 
@@ -219,6 +221,7 @@ function Switcher({
     onCreate,
     createLabel,
     searchPlaceholder,
+    currentHref,
     disabled = false,
 }: SwitcherProps) {
     const [open, setOpen] = useState(false);
@@ -249,26 +252,57 @@ function Switcher({
         )
         : items;
 
+    const toggle = () => {
+        setQuery("");
+        setOpen((value) => !value);
+    };
+
     return (
         <div ref={ref} className="relative">
-            <button
-                type="button"
-                aria-haspopup="listbox"
-                aria-expanded={open}
-                aria-label={label}
-                disabled={disabled}
-                onClick={() => {
-                    setQuery("");
-                    setOpen((o) => !o);
-                }}
-                className="flex items-center gap-1 rounded-lg px-1 py-0.5 font-semibold text-white transition-colors hover:bg-[var(--jetic-well)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 disabled:opacity-50"
+            <div
+                className={`flex items-center gap-0.5 rounded-lg px-1 py-0.5 font-semibold text-white transition-colors hover:bg-[var(--jetic-well)] ${disabled ? "opacity-50" : ""
+                    }`}
             >
-                <span className="max-w-[90px] truncate sm:max-w-[160px]">
-                    {current?.label ?? "Select"}
-                </span>
-                {current?.plan && <PlanChip plan={current.plan} />}
-                <ChevronsUpDown size={14} className="shrink-0 text-[var(--jetic-muted)]" />
-            </button>
+                {currentHref ? (
+                    <Link
+                        href={currentHref}
+                        onClick={() => setOpen(false)}
+                        className="flex min-w-0 items-center gap-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                        aria-label={`Open ${current?.label ?? label}`}
+                    >
+                        <span className="max-w-[90px] truncate sm:max-w-[160px]">
+                            {current?.label ?? "Select"}
+                        </span>
+                        {current?.plan && <PlanChip plan={current.plan} />}
+                    </Link>
+                ) : (
+                    <button
+                        type="button"
+                        aria-haspopup="listbox"
+                        aria-expanded={open}
+                        aria-label={label}
+                        disabled={disabled}
+                        onClick={toggle}
+                        className="flex min-w-0 items-center gap-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 disabled:cursor-not-allowed"
+                    >
+                        <span className="max-w-[90px] truncate sm:max-w-[160px]">
+                            {current?.label ?? "Select"}
+                        </span>
+                        {current?.plan && <PlanChip plan={current.plan} />}
+                    </button>
+                )}
+                <button
+                    type="button"
+                    aria-haspopup="listbox"
+                    aria-expanded={open}
+                    aria-label={`${label} menu`}
+                    disabled={disabled}
+                    onClick={toggle}
+                    className="flex h-6 w-5 shrink-0 items-center justify-center rounded text-[var(--jetic-muted)] transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 disabled:cursor-not-allowed"
+                >
+                    <ChevronsUpDown size={14} />
+                </button>
+            </div>
 
             {open && (
                 <div className="jetic-menu absolute left-0 top-[calc(100%+6px)] z-30 w-64 max-w-[calc(100vw-2rem)] p-2 rounded">
@@ -400,12 +434,27 @@ export default function Toolbar({
         label: item.name,
         plan: item.plan,
     }));
-    const sandboxItems = (sandboxes.length > 0 ? sandboxes : project ? [project] : []).map(
-        (item) => ({ id: item, label: item }),
-    );
+    const { sandboxes: cachedSandboxes } = useSandboxList(workspace.slug);
+    const sandboxOptions = cachedSandboxes.map((sandbox) => ({
+        id: sandbox.slug,
+        label: sandbox.name,
+    }));
+    if (project && !sandboxOptions.some((item) => item.id === project)) {
+        sandboxOptions.unshift({ id: project, label: project });
+    }
+    const sandboxItems =
+        sandboxOptions.length > 0
+            ? sandboxOptions
+            : (sandboxes.length > 0 ? sandboxes : project ? [project] : []).map(
+                (item) => ({ id: item, label: item }),
+            );
 
     const selectWorkspace = async (id: string) => {
-        if (id === workspace.id || switching) return;
+        if (switching) return;
+        if (id === workspace.id) {
+            router.push(`/app/workspace/${encodeURIComponent(workspace.slug)}`);
+            return;
+        }
         const target = workspaces.find((item) => item.id === id);
         if (!target) return;
 
@@ -466,6 +515,7 @@ export default function Toolbar({
                             onCreate={() => setCreateWorkspaceOpen(true)}
                             createLabel="Create new workspace"
                             searchPlaceholder="Search workspaces…"
+                            currentHref={`/app/workspace/${encodeURIComponent(workspace.slug)}`}
                             disabled={switching}
                         />
                         {isSandboxRoute && sandboxItems.length > 0 && (
@@ -479,6 +529,11 @@ export default function Toolbar({
                                     onCreate={() => setCreateSandboxOpen(true)}
                                     createLabel="Create new sandbox"
                                     searchPlaceholder="Search sandboxes…"
+                                    currentHref={
+                                        project
+                                            ? `/app/workspace/${encodeURIComponent(workspace.slug)}/sandbox/${encodeURIComponent(project)}`
+                                            : undefined
+                                    }
                                 />
                             </>
                         )}

@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   ArrowRight,
@@ -29,6 +30,8 @@ import {
 
 import { JeticAnimatedIcon } from "@/components/jetic-animated-icon";
 import { GitHubIcon } from "@/components/icons/github-icon";
+import { needsGithubReconnectMessage } from "@/features/github/errors";
+import { queryKeys } from "@/cache";
 import {
   selectGithubConnected,
   selectGithubReady,
@@ -481,6 +484,7 @@ export function CreateSandboxDialog({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const userStatus = useUserStore((state) => state.status);
   const userError = useUserStore((state) => state.error);
@@ -592,7 +596,17 @@ export function CreateSandboxDialog({
     const poll = async () => {
       try {
         const result = await getSandboxStatus(workspaceId, sandboxId);
-        if (!cancelled) created(result.sandbox);
+        if (!cancelled) {
+          created(result.sandbox);
+          if (result.sandbox.status === "active") {
+            void queryClient.invalidateQueries({
+              queryKey: queryKeys.workspaceSandboxes(workspaceSlug),
+            });
+            void queryClient.invalidateQueries({
+              queryKey: queryKeys.workspaceActivityRoot(workspaceSlug),
+            });
+          }
+        }
       } catch (error) {
         if (!cancelled) failed(errorMessage(error));
       }
@@ -607,7 +621,7 @@ export function CreateSandboxDialog({
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [step, sandboxId, workspaceId, created, failed]);
+  }, [step, sandboxId, workspaceId, workspaceSlug, queryClient, created, failed]);
 
   function handleClose() {
     resetDraft();
@@ -733,6 +747,12 @@ export function CreateSandboxDialog({
           })),
       });
       created(result.sandbox);
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.workspaceSandboxes(workspaceSlug),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.workspaceActivityRoot(workspaceSlug),
+      });
     } catch (error) {
       failed(errorMessage(error));
     }
@@ -998,13 +1018,15 @@ export function CreateSandboxDialog({
                     >
                       <AlertCircle size={14} />
                       <span className="min-w-0 flex-1">{accountsError}</span>
-                      <button
-                        type="button"
-                        onClick={connectGithub}
-                        className="shrink-0 font-medium text-white hover:underline"
-                      >
-                        Reconnect
-                      </button>
+                      {needsGithubReconnectMessage(accountsError) && (
+                        <button
+                          type="button"
+                          onClick={connectGithub}
+                          className="shrink-0 font-medium text-white hover:underline"
+                        >
+                          Reconnect
+                        </button>
+                      )}
                     </div>
                   )}
 
@@ -1045,6 +1067,16 @@ export function CreateSandboxDialog({
                           <RefreshCw size={13} />
                           Retry
                         </button>
+                        {needsGithubReconnectMessage(repositoriesError) && (
+                          <button
+                            type="button"
+                            onClick={connectGithub}
+                            className={primaryButton}
+                          >
+                            <GitHubIcon size={14} />
+                            Reconnect GitHub
+                          </button>
+                        )}
                       </div>
                     )}
 

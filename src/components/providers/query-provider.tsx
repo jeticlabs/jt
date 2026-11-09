@@ -1,20 +1,18 @@
 "use client";
 
-import * as React from "react";
+import { useState, type ReactNode } from "react";
+import { QueryClientProvider } from "@tanstack/react-query";
+
+import { createQueryClient } from "@/cache/query-client";
 
 /**
- * Minimal query-provider stand-in.
- * Swap for TanStack Query's QueryClientProvider when you add that dependency.
+ * App-wide TanStack Query provider. The client is created lazily once per
+ * browser session so caches survive client-side navigation.
  */
-const QueryContext = React.createContext({ mounted: true });
+export function QueryProvider({ children }: { children: ReactNode }) {
+  const [queryClient] = useState(createQueryClient);
 
-export function QueryProvider({ children }: { children: React.ReactNode }) {
-  const value = React.useMemo(() => ({ mounted: true }), []);
   return (
-    <QueryContext.Provider value={value}>{children}</QueryContext.Provider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
-}
-
-export function useQueryContext() {
-  return React.useContext(QueryContext);
 }

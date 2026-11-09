@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
   AlertCircle,
@@ -15,17 +16,16 @@ import {
 } from "lucide-react";
 
 import { GitHubIcon } from "@/components/icons/github-icon";
-
-import { listActivity } from "@/features/activity/activity.api";
+import {
+  insertActivityEvent,
+  useActivityFeed,
+  useWorkspaceSandboxes,
+} from "@/cache";
 import type { ActivityEvent } from "@/features/activity/types";
 import { useActivityStream } from "@/features/activity/use-activity-stream";
-import { listSandboxes } from "@/features/sandbox/sandbox.api";
 import type { Sandbox } from "@/features/sandbox/types";
-import { resolveWorkspaceBySlug } from "@/features/workspace/api";
-import type { PageMeta } from "@/features/workspace/types";
 import { errorMessage } from "@/lib/api/browser";
 
-type LoadStatus = "loading" | "ready" | "error";
 type Filter = "all" | "runtime" | "repository" | "model";
 
 const FILTERS: { id: Filter; label: string }[] = [
@@ -138,61 +138,32 @@ function SkeletonRows() {
 export default function WorkspaceActivityPage() {
   const params = useParams<{ workspaceId?: string | string[] }>();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const workspaceSlug = Array.isArray(params?.workspaceId)
     ? (params.workspaceId[0] ?? "")
     : (params?.workspaceId ?? "");
 
-  const [organizationId, setOrganizationId] = useState<string | null>(null);
-  const [sandboxes, setSandboxes] = useState<Record<string, Sandbox>>({});
-  const [events, setEvents] = useState<ActivityEvent[]>([]);
-  const [page, setPage] = useState<PageMeta>({ nextCursor: null, hasMore: false });
-  const [status, setStatus] = useState<LoadStatus>("loading");
-  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
+  const activity = useActivityFeed(workspaceSlug);
+  const sandboxQuery = useWorkspaceSandboxes(workspaceSlug);
+  const events = activity.events;
+  const organizationId = activity.organizationId;
 
-  useEffect(() => {
-    if (!workspaceSlug) return;
-    let cancelled = false;
-
-    void (async () => {
-      setStatus("loading");
-      setError(null);
-      try {
-        const membership = await resolveWorkspaceBySlug(workspaceSlug);
-        const [sandboxPage, activityPage] = await Promise.all([
-          listSandboxes(membership.organization.id, { limit: 100 }),
-          listActivity(membership.organization.id, { limit: 100 }),
-        ]);
-        if (cancelled) return;
-
-        setOrganizationId(membership.organization.id);
-        setSandboxes(
-          Object.fromEntries(sandboxPage.data.map((sandbox) => [sandbox.id, sandbox])),
-        );
-        setEvents(activityPage.data);
-        setPage(activityPage.page);
-        setStatus("ready");
-      } catch (cause) {
-        if (cancelled) return;
-        setStatus("error");
-        setError(errorMessage(cause));
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [workspaceSlug, reloadKey]);
+  const sandboxes = useMemo<Record<string, Sandbox>>(
+    () =>
+      Object.fromEntries(
+        (sandboxQuery.data?.pages.flatMap((page) => page.data) ?? []).map(
+          (sandbox) => [sandbox.id, sandbox],
+        ),
+      ),
+    [sandboxQuery.data],
+  );
 
   const { connected } = useActivityStream({
     organizationId,
     enabled: Boolean(organizationId),
     onEvent: (event) => {
-      setEvents((current) =>
-        current.some((item) => item.id === event.id) ? current : [event, ...current],
-      );
+      insertActivityEvent(queryClient, workspaceSlug, event);
     },
   });
 
@@ -201,25 +172,13 @@ export default function WorkspaceActivityPage() {
     [events, filter],
   );
 
-  const loadMore = async () => {
-    if (!organizationId || !page.nextCursor || loadingMore) return;
-    setLoadingMore(true);
-    try {
-      const result = await listActivity(organizationId, {
-        limit: 100,
-        cursor: page.nextCursor,
-      });
-      setEvents((current) => {
-        const known = new Set(current.map((event) => event.id));
-        return [...current, ...result.data.filter((event) => !known.has(event.id))];
-      });
-      setPage(result.page);
-    } catch (cause) {
-      setError(errorMessage(cause));
-    } finally {
-      setLoadingMore(false);
-    }
-  };
+  const loadError = activity.isError
+    ? errorMessage(activity.error)
+    : activity.isWorkspaceError
+      ? errorMessage(activity.workspaceError)
+      : null;
+  const activityFailed = activity.isError || activity.isWorkspaceError;
+  const activityPending = activity.isPending && !activity.isWorkspaceError;
 
   return (
     <main className="jetic-surface min-h-full w-full bg-[var(--jetic-well)] px-5 pb-16 pt-5 text-white antialiased sm:px-6 lg:px-8">
@@ -268,7 +227,7 @@ export default function WorkspaceActivityPage() {
             </div>
             <button
               type="button"
-              onClick={() => setReloadKey((value) => value + 1)}
+              onClick={() => void activity.refetch()}
               className="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/10 px-3 text-[12px] font-medium text-[var(--jetic-muted)] transition-colors hover:border-white/20 hover:text-white"
             >
               <RefreshCw size={13} />
@@ -278,16 +237,16 @@ export default function WorkspaceActivityPage() {
         </header>
 
 
-        {status === "error" ? (
+        {activityFailed ? (
           <div className="jetic-card flex flex-col items-center gap-3 rounded-lg bg-[var(--jetic-bg)] px-6 py-12 text-center">
             <AlertCircle size={22} className="text-red-300" />
             <h2 className="text-[14px] font-semibold">Activity could not be loaded</h2>
             <p className="jetic-muted max-w-md text-[12.5px] leading-5">
-              {error ?? "Something went wrong while reading the workspace activity."}
+              {loadError ?? "Something went wrong while reading the workspace activity."}
             </p>
             <button
               type="button"
-              onClick={() => setReloadKey((value) => value + 1)}
+              onClick={() => void activity.refetch()}
               className="mt-1 inline-flex h-8 items-center gap-1.5 rounded-md border border-white/10 px-3 text-[12px] font-medium text-white transition-colors hover:border-white/20 hover:bg-white/[0.04]"
             >
               <RefreshCw size={13} />
@@ -311,9 +270,9 @@ export default function WorkspaceActivityPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {status === "loading" && <SkeletonRows />}
+                  {activityPending && <SkeletonRows />}
 
-                  {status === "ready" &&
+                  {activity.isSuccess &&
                     filtered.map((event) => {
                       const metadata = metadataOf(event);
                       const project = eventProject(event, sandboxes, workspaceSlug);
@@ -417,7 +376,7 @@ export default function WorkspaceActivityPage() {
               </table>
             </div>
 
-            {status === "ready" && filtered.length === 0 && (
+            {activity.isSuccess && filtered.length === 0 && (
               <div className="flex flex-col items-center gap-2 border-t border-white/10 px-6 py-14 text-center">
                 <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-[var(--jetic-muted)]">
                   <Activity size={16} />
@@ -439,15 +398,15 @@ export default function WorkspaceActivityPage() {
               </div>
             )}
 
-            {status === "ready" && page.hasMore && filter === "all" && (
+            {activity.isSuccess && activity.hasNextPage && filter === "all" && (
               <div className="border-t border-white/10 p-3">
                 <button
                   type="button"
-                  onClick={() => void loadMore()}
-                  disabled={loadingMore}
+                  onClick={() => void activity.fetchNextPage()}
+                  disabled={activity.isFetchingNextPage}
                   className="inline-flex h-8 w-full items-center justify-center gap-2 rounded-md border border-white/10 text-[12px] font-medium text-[var(--jetic-muted)] transition-colors hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {loadingMore && <Loader2 size={13} className="animate-spin" />}
+                  {activity.isFetchingNextPage && <Loader2 size={13} className="animate-spin" />}
                   Load more
                 </button>
               </div>

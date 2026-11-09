@@ -99,7 +99,7 @@ function ChromeToolbar({
   const isAgenticMode = /\/chat(?:\/|$)/.test(pathname);
 
   const openSandbox = (id: string) => {
-    if (!id || id === sandboxId) return;
+    if (!id) return;
     const basePath = `/app/workspace/${encodeURIComponent(workspaceSlug)}/sandbox/${encodeURIComponent(id)}`;
     router.push(isAgenticMode ? `${basePath}/chat` : basePath);
   };

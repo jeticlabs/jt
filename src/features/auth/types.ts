@@ -6,6 +6,7 @@ export interface AccountUser {
   readonly image: string | null;
   readonly githubId: string | null;
   readonly githubUsername: string | null;
+  readonly githubCredentialsStored: boolean;
   readonly usePassword: boolean;
   readonly hasPassword: boolean;
   readonly createdAt: string;

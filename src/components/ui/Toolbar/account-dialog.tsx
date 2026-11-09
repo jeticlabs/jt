@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/skeleton";
 import { apiFetch, errorMessage } from "@/lib/api/browser";
 import { GitHubIcon } from "@/components/icons/github-icon";
-import { useUserStore } from "@/context";
+import { useGithubStore, useUserStore } from "@/context";
 
 /* -------------------------------------------------------------------------- */
 /*                                   Types                                    */
@@ -42,6 +42,7 @@ interface AccountUser {
   readonly image: string | null;
   readonly githubId: string | null;
   readonly githubUsername: string | null;
+  readonly githubCredentialsStored: boolean;
   readonly usePassword: boolean;
   readonly hasPassword: boolean;
   readonly createdAt: string;
@@ -1264,9 +1265,8 @@ function ConnectedAccountsPanel({
 
   const connect = () => {
     const next = window.location.pathname;
-    window.location.assign(
-      `/api/auth/github/connect?next=${encodeURIComponent(next)}`,
-    );
+    const destination = `/api/auth/github/connect?next=${encodeURIComponent(next)}`;
+    window.location.assign(new URL(destination, window.location.origin).toString());
   };
 
   const disconnect = async () => {
@@ -1279,6 +1279,7 @@ function ConnectedAccountsPanel({
         method: "DELETE",
       });
       onProfileChange(result.user);
+      useGithubStore.getState().reset();
       setNotice("GitHub disconnected.");
     } catch (cause) {
       setError(errorMessage(cause));
@@ -1288,6 +1289,7 @@ function ConnectedAccountsPanel({
   };
 
   const connected = user.githubId !== null;
+  const needsReconnect = connected && !user.githubCredentialsStored;
   const profileUrl =
     user.githubUsername !== null
       ? `https://github.com/${encodeURIComponent(user.githubUsername)}`
@@ -1299,9 +1301,11 @@ function ConnectedAccountsPanel({
       description="Use GitHub to sign in or create this account."
       footer={
         <span>
-          {connected
-            ? "GitHub is linked to this Jetic account."
-            : "Connect GitHub to sign in with your GitHub identity."}
+          {needsReconnect
+            ? "GitHub is linked, but repository access needs to be reauthorized."
+            : connected
+              ? "GitHub is linked to this Jetic account."
+              : "Connect GitHub to sign in with your GitHub identity."}
         </span>
       }
     >
@@ -1315,7 +1319,11 @@ function ConnectedAccountsPanel({
               {user.githubUsername ? `@${user.githubUsername}` : "GitHub"}
             </p>
             <p className="jetic-muted mt-0.5 text-[11.5px]">
-              {connected ? "Connected" : "Not connected"}
+              {needsReconnect
+                ? "Reconnect required"
+                : connected
+                  ? "Connected"
+                  : "Not connected"}
             </p>
           </div>
         </div>
@@ -1323,6 +1331,12 @@ function ConnectedAccountsPanel({
         <div className="flex flex-wrap items-center gap-2">
           {connected ? (
             <>
+              {needsReconnect && (
+                <button type="button" onClick={connect} className={primaryButton}>
+                  <GitHubIcon size={13} />
+                  Reconnect
+                </button>
+              )}
               {profileUrl && (
                 <a
                   href={profileUrl}

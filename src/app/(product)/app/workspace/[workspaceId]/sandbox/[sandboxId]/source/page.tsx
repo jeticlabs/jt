@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 
 import { GitHubIcon } from "@/components/icons/github-icon";
+import { useUserStore } from "@/context";
+import { needsGithubReconnectMessage } from "@/features/github/errors";
 
 import { getSandboxSource, getSandboxSourceFile } from "@/features/sandbox/sandbox.api";
 import type {
@@ -60,6 +62,7 @@ function connectGithub() {
 export default function SandboxSourcePage() {
   const { organizationId, sandbox, status, error, reload, workspaceSlug } =
     useSandboxContext();
+  const loadUser = useUserStore((state) => state.load);
   const [source, setSource] = useState<SandboxSource | null>(null);
   const [sourceStatus, setSourceStatus] = useState<LoadStatus>("loading");
   const [sourceError, setSourceError] = useState<string | null>(null);
@@ -76,6 +79,10 @@ export default function SandboxSourcePage() {
 
   const repository = sandbox?.repository;
   const branch = sandbox?.defaultBranch ?? repository?.defaultBranch ?? "main";
+
+  useEffect(() => {
+    void loadUser({ force: true });
+  }, [loadUser]);
 
   useEffect(() => {
     if (!organizationId || !sandbox) return;
@@ -277,7 +284,7 @@ export default function SandboxSourcePage() {
   }
 
   if (sourceStatus === "error" || !source) {
-    const githubProblem = (sourceError ?? "").toLowerCase().includes("github");
+    const githubProblem = needsGithubReconnectMessage(sourceError);
     return (
       <main className="jetic-surface flex h-full min-h-0 items-center justify-center bg-[var(--jetic-well)] px-5">
         <div className="jetic-card flex w-full max-w-lg flex-col items-center gap-3 rounded-lg bg-[var(--jetic-bg)] px-6 py-10 text-center">
