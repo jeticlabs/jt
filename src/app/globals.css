@@ -241,12 +241,8 @@ body {
 /* The docs container carries `.jetic-surface dark` (see src/app/docs/layout.tsx),
    so it inherits the product surface (--jetic-bg, Inter, antialiasing) and runs
    in a forced dark context. Here we map Fumadocs' own design tokens onto the
-   Jetic `--jetic-*` palette so the whole docs shell follows the global theme.
-   The `!important` on the width is required because Fumadocs pins the default
-   (268px) at md+ via a higher-specificity rule. */
+   Jetic `--jetic-*` palette so the whole docs shell follows the global theme. */
 #nd-docs-layout {
-  --fd-sidebar-width: 300px !important;
-
   --color-fd-background: var(--jetic-bg);
   --color-fd-foreground: var(--jetic-emphasis);
   --color-fd-muted: var(--jetic-well);
@@ -264,6 +260,17 @@ body {
   --color-fd-accent-foreground: #ffffff;
   --color-fd-ring: var(--jetic-ring);
   --color-fd-overlay: rgb(0 0 0 / 0.6);
+}
+
+/* The desktop docs sidebar reserves a grid column via --fd-sidebar-width.
+   Fumadocs intentionally clears that variable to 0px below md, so the
+   override must stay behind the same breakpoint; applying it globally would
+   squeeze the article into a narrow column on phones. The `!important` is
+   still required to beat Fumadocs' own md+ width rule. */
+@media (min-width: 48rem) {
+  #nd-docs-layout {
+    --fd-sidebar-width: 300px !important;
+  }
 }
 
 /* Fumadocs' neutral.css nudges these on the sidebar with higher specificity;

@@ -4,7 +4,6 @@ import { usePathname } from "next/navigation";
 import {
   MarkdownCopyButton,
   PageBreadcrumb,
-  ViewOptionsPopover,
 } from "fumadocs-ui/layouts/docs/page";
 import { buttonVariants } from "fumadocs-ui/components/ui/button";
 import { useAIChat } from "@/components/ai/search";
@@ -87,7 +86,8 @@ function CopyLinkButton() {
         copied && "text-green-500",
       )}
     >
-      {copied ? <CheckIcon /> : <LinkIcon />} Copy page link
+      {copied ? <CheckIcon /> : <LinkIcon />}
+      <span className="hidden sm:inline">Copy page link</span>
     </button>
   );
 }
@@ -105,11 +105,11 @@ export function DocsPageHeader() {
       <div className="ms-auto flex flex-wrap items-center gap-1.5 [&_svg]:size-3.5">
         <AskAi />
         <a
-          href={GITHUB_REPO}
+          href={githubUrl}
           target="_blank"
           rel="noreferrer noopener"
-          aria-label="Jetic on GitHub"
-          title="View the Jetic repository on GitHub"
+          aria-label="Edit this page on GitHub"
+          title="Edit this page on GitHub"
           className={cn(
             buttonVariants({ variant: "secondary", size: "icon-sm" }),
           )}
@@ -117,8 +117,9 @@ export function DocsPageHeader() {
           <GitHubIcon />
         </a>
         <CopyLinkButton />
-        <MarkdownCopyButton markdownUrl={markdownUrl} />
-
+        <MarkdownCopyButton markdownUrl={markdownUrl} aria-label="Copy Markdown">
+          <span className="hidden sm:inline">Copy Markdown</span>
+        </MarkdownCopyButton>
       </div>
     </div>
   );

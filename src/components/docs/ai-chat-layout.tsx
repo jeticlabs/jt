@@ -13,7 +13,7 @@ function LayoutWithChat({ tree, children }: { tree: Root; children: ReactNode })
     <DocsLayout
       tree={tree}
       {...baseOptions()}
-      containerProps={{ className: "jetic-surface dark" }}
+      containerProps={{ className: "jetic-surface dark min-w-0" }}
       aiChat={{ open, onOpenChange: setOpen, panel: <AIChatPanel /> }}
     >
       {children}

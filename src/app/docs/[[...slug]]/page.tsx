@@ -23,9 +23,11 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
       full={page.data.full}
       slots={{ breadcrumb: DocsPageHeader }}
     >
-      <DocsTitle>{page.data.title}</DocsTitle>
-      <DocsDescription>{page.data.description}</DocsDescription>
-      <DocsBody>
+      <DocsTitle className="text-balance leading-tight">{page.data.title}</DocsTitle>
+      <DocsDescription className="mb-6 max-w-3xl text-pretty text-base leading-7 sm:mb-8 sm:text-lg">
+        {page.data.description}
+      </DocsDescription>
+      <DocsBody className="min-w-0">
         <MDX
           components={getMDXComponents({
             // this allows you to link to other pages with relative file paths
