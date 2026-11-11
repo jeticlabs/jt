@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { inter } from "@/app/fonts";
+import { GithubAutoReconnect } from "@/components/providers/github-auto-reconnect";
 import { StateProvider } from "@/context/providers/state-provider";
 import { WorkspaceChrome } from "@/components/ui/WorkspaceChrome/workspace-chrome";
 import { requireAuthContext } from "@/server/auth/session";
@@ -58,6 +59,7 @@ export default async function WorkspaceLayout({
   return (
     <div className={`${inter.className} h-full w-full bg-[#111111]`}>
       <StateProvider>
+        <GithubAutoReconnect />
         <WorkspaceChrome
           user={{
             name: context.user.name,
