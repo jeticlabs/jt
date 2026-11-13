@@ -33,6 +33,9 @@ export const queryKeys = {
       sandboxId ?? "none",
     ] as const,
 
+  repositoryAlerts: (workspaceSlug: string) =>
+    [...queryKeys.workspace(workspaceSlug), "github-repository-alerts"] as const,
+
   memberPermissions: (
     workspaceSlug: string,
     memberId: string,

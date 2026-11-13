@@ -10,6 +10,7 @@ export {
   useSandboxBySlug,
   useSandboxPermissions,
   useMemberPermissions,
+  useRepositoryAlerts,
 } from "./queries/workspace";
 export {
   useActivityFeed,

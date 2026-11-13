@@ -8,6 +8,7 @@ import { Check, ChevronsUpDown, Plus, PlusIcon } from "lucide-react";
 
 import { inter } from "@/app/fonts";
 import { useSandboxList } from "@/cache";
+import type { GitHubRepository } from "@/features/github/types";
 import type { OrganizationRole, Plan } from "@/features/workspace/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch, errorMessage } from "@/lib/api/browser";
@@ -407,6 +408,8 @@ export default function Toolbar({
     const [accountOpen, setAccountOpen] = useState(false);
     const [createWorkspaceOpen, setCreateWorkspaceOpen] = useState(false);
     const [createSandboxOpen, setCreateSandboxOpen] = useState(false);
+    const [initialRepository, setInitialRepository] =
+        useState<GitHubRepository | null>(null);
     const [switching, setSwitching] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
     const accountMenuRef = useRef<HTMLDivElement>(null);
@@ -428,6 +431,31 @@ export default function Toolbar({
             document.removeEventListener("keydown", onKey);
         };
     }, [accountMenuOpen]);
+
+    const openCreateSandbox = () => {
+        setInitialRepository(null);
+        setCreateSandboxOpen(true);
+    };
+
+    useEffect(() => {
+        const onImportRepository = (event: Event) => {
+            const detail = (
+                event as CustomEvent<{ repository?: GitHubRepository }>
+            ).detail;
+            if (!detail?.repository) return;
+            setInitialRepository(detail.repository);
+            setCreateSandboxOpen(true);
+        };
+        window.addEventListener(
+            "jetic:import-github-repository",
+            onImportRepository,
+        );
+        return () =>
+            window.removeEventListener(
+                "jetic:import-github-repository",
+                onImportRepository,
+            );
+    }, []);
 
     const workspaceItems = workspaces.map((item) => ({
         id: item.id,
@@ -526,7 +554,7 @@ export default function Toolbar({
                                     valueId={project}
                                     items={sandboxItems}
                                     onSelect={(id) => onSelectSandbox?.(id)}
-                                    onCreate={() => setCreateSandboxOpen(true)}
+                                    onCreate={openCreateSandbox}
                                     createLabel="Create new sandbox"
                                     searchPlaceholder="Search sandboxes…"
                                     currentHref={
@@ -569,7 +597,7 @@ export default function Toolbar({
                         {!isSandboxRoute && (
                             <button
                                 type="button"
-                                onClick={() => setCreateSandboxOpen(true)}
+                                onClick={openCreateSandbox}
                                 className="flex px-2 py-1 items-center gap-1.5 rounded-md bg-white px-3 text-[13px] font-medium text-black transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
                             >
                                 <PlusIcon className="h-4 w-4" />
@@ -697,7 +725,11 @@ export default function Toolbar({
                     workspaceSlug={workspace.slug}
                     workspaceName={workspace.name}
                     workspacePlan={workspace.plan}
-                    onClose={() => setCreateSandboxOpen(false)}
+                    initialRepository={initialRepository}
+                    onClose={() => {
+                        setCreateSandboxOpen(false);
+                        setInitialRepository(null);
+                    }}
                 />
             )}
         </div>

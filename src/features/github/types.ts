@@ -47,3 +47,9 @@ export interface GitHubRepositoryPage {
     readonly hasMore: boolean;
   };
 }
+
+export interface RepositoryAlert {
+  readonly id: string;
+  readonly discoveredAt: string;
+  readonly repository: GitHubRepository;
+}

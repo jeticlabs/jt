@@ -31,6 +31,7 @@ import {
 import { JeticAnimatedIcon } from "@/components/jetic-animated-icon";
 import { GitHubIcon } from "@/components/icons/github-icon";
 import { needsGithubReconnectMessage } from "@/features/github/errors";
+import { markRepositoryAlertImported } from "@/features/github/repository-alerts.api";
 import { queryKeys } from "@/cache";
 import {
   selectGithubConnected,
@@ -475,12 +476,14 @@ export function CreateSandboxDialog({
   workspaceSlug,
   workspaceName,
   workspacePlan = "hobby",
+  initialRepository = null,
   onClose,
 }: {
   workspaceId: string;
   workspaceSlug: string;
   workspaceName?: string;
   workspacePlan?: Plan;
+  initialRepository?: GitHubRepository | null;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -553,7 +556,8 @@ export function CreateSandboxDialog({
   useEffect(() => {
     resetDraft();
     resetGithub();
-  }, [resetDraft, resetGithub]);
+    if (initialRepository) selectRepository(initialRepository);
+  }, [resetDraft, resetGithub, initialRepository, selectRepository]);
 
   useEffect(() => {
     void loadUser({ force: true });
@@ -752,6 +756,12 @@ export function CreateSandboxDialog({
       });
       void queryClient.invalidateQueries({
         queryKey: queryKeys.workspaceActivityRoot(workspaceSlug),
+      });
+      void markRepositoryAlertImported(selectedRepository.id).catch(
+        () => undefined,
+      );
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.repositoryAlerts(workspaceSlug),
       });
     } catch (error) {
       failed(errorMessage(error));

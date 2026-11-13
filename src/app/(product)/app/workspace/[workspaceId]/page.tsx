@@ -3,10 +3,13 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { X } from "lucide-react";
 
-import { useSandboxList } from "@/cache";
+import { useRepositoryAlerts, useSandboxList } from "@/cache";
+import type { RepositoryAlert } from "@/features/github/types";
 import type { Sandbox, SandboxStatus } from "@/features/sandbox/types";
 import { errorMessage } from "@/lib/api/browser";
+import RunReviewCard from "@/components/RunReviewCard";
 
 /* ------------------------------- Icons ---------------------------------- */
 
@@ -175,9 +178,8 @@ function StatusRing({ variant = "activity" }: { variant?: StatusVariant }) {
   return (
     <span
       aria-hidden="true"
-      className={`flex h-7 w-7 items-center justify-center rounded-full ${
-        variant === "error" ? "text-red-300" : "text-[var(--jetic-muted)]"
-      }`}
+      className={`flex h-7 w-7 items-center justify-center rounded-full ${variant === "error" ? "text-red-300" : "text-[var(--jetic-muted)]"
+        }`}
     >
       <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
         <circle cx="14" cy="14" r={r} stroke="rgba(255,255,255,0.12)" strokeWidth="2" />
@@ -380,6 +382,56 @@ function SandboxSkeleton() {
   );
 }
 
+function NewRepositoryAlertCard({
+  alert,
+  count,
+  onDismiss,
+  onImport,
+}: {
+  alert: RepositoryAlert;
+  count: number;
+  onDismiss: () => void;
+  onImport: () => void;
+}) {
+  return (
+    <div className="relative max-w-md rounded-lg border border-dashed border-white/25 bg-[var(--jetic-bg)] p-4">
+      <button
+        type="button"
+        aria-label="Dismiss new repository alert"
+        onClick={onDismiss}
+        className="absolute right-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-full border border-white/10 text-[var(--jetic-muted)] transition-colors hover:border-white/20 hover:bg-white/[0.04] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+      >
+        <X size={12} />
+      </button>
+      <div className="flex items-start gap-3 pr-7">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/10 bg-[var(--jetic-well)] text-[var(--jetic-muted)]">
+          <GithubIcon />
+        </span>
+        <div className="min-w-0">
+          <p className="flex flex-wrap items-center gap-2 text-[13px] font-semibold text-white">
+            New repository detected
+            {count > 1 && (
+              <span className="rounded-full border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[9.5px] font-medium text-[var(--jetic-muted)]">
+                {count} new
+              </span>
+            )}
+          </p>
+          <p className="jetic-muted mt-1 truncate text-[12px]">
+            {alert.repository.fullName}
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onImport}
+        className="mt-3 flex h-8 w-full items-center justify-center rounded-md bg-white text-[12.5px] font-medium text-black transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+      >
+        Import
+      </button>
+    </div>
+  );
+}
+
 /* -------------------------------- Page ---------------------------------- */
 
 const secondaryControl =
@@ -421,6 +473,10 @@ export default function DashboardPage() {
     hasNextPage,
     isFetchingNextPage,
   } = useSandboxList(workspaceSlug);
+  const {
+    alerts: repositoryAlerts,
+    dismiss: dismissRepositoryAlert,
+  } = useRepositoryAlerts(workspaceSlug);
 
   const loadError = isError ? errorMessage(error) : null;
 
@@ -485,11 +541,10 @@ export default function DashboardPage() {
                 aria-label={label}
                 aria-pressed={view === key}
                 onClick={() => setView(key)}
-                className={`flex h-full w-9 items-center justify-center rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
-                  view === key
-                    ? "bg-[var(--jetic-well)] text-white"
-                    : "text-[var(--jetic-faint)] hover:text-white"
-                }`}
+                className={`flex h-full w-9 items-center justify-center rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${view === key
+                  ? "bg-[var(--jetic-well)] text-white"
+                  : "text-[var(--jetic-faint)] hover:text-white"
+                  }`}
               >
                 {icon}
               </button>
@@ -528,9 +583,8 @@ export default function DashboardPage() {
                   </button>
                 </div>
                 <ul
-                  className={`z-0 flex flex-col gap-1 overflow-hidden ${
-                    usageOpen ? "" : "max-h-[128px]"
-                  }`}
+                  className={`z-0 flex flex-col gap-1 overflow-hidden ${usageOpen ? "" : "max-h-[128px]"
+                    }`}
                 >
                   {usage.map((u) => (
                     <li
@@ -599,10 +653,32 @@ export default function DashboardPage() {
           <section className="min-w-0 flex-1">
             <SectionTitle>Sandboxes</SectionTitle>
 
+            {repositoryAlerts.length > 0 && repositoryAlerts[0] && (
+              <div className="mb-3">
+                <NewRepositoryAlertCard
+                  alert={repositoryAlerts[0]}
+                  count={repositoryAlerts.length}
+                  onDismiss={() => {
+                    void dismissRepositoryAlert(repositoryAlerts[0]!.id).catch(
+                      () => undefined,
+                    );
+                  }}
+                  onImport={() => {
+                    window.dispatchEvent(
+                      new CustomEvent("jetic:import-github-repository", {
+                        detail: {
+                          repository: repositoryAlerts[0]!.repository,
+                        },
+                      }),
+                    );
+                  }}
+                />
+              </div>
+            )}
+
             <div
-              className={`grid gap-3 ${
-                view === "grid" ? "sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"
-              }`}
+              className={`grid gap-3 ${view === "grid" ? "sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"
+                }`}
             >
               {isPending &&
                 Array.from({ length: 6 }).map((_, index) => (
@@ -662,6 +738,8 @@ export default function DashboardPage() {
               </button>
             )}
           </section>
+
+          <RunReviewCard />
         </div>
       </div>
     </main>

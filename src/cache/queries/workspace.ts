@@ -11,6 +11,12 @@ import type {
   MemberPermissions,
   MyPermissions,
 } from "@/features/permissions/types";
+import {
+  dismissRepositoryAlert,
+  fetchRepositoryAlerts,
+  markRepositoryAlertImported,
+} from "@/features/github/repository-alerts.api";
+import type { RepositoryAlert } from "@/features/github/types";
 import { getSandboxBySlug, listSandboxes } from "@/features/sandbox/sandbox.api";
 import type { Sandbox } from "@/features/sandbox/types";
 import { resolveWorkspaceBySlug } from "@/features/workspace/api";
@@ -23,6 +29,11 @@ import type {
   Member,
   OrganizationMembership,
 } from "@/features/workspace/types";
+import {
+  selectGithubConnected,
+  selectGithubReady,
+  useUserStore,
+} from "@/context";
 import { queryKeys } from "../query-keys";
 
 /** Workspace slug → organization membership, shared by all workspace pages. */
@@ -197,4 +208,49 @@ export function useMemberPermissions(
     ...(initialData ? { initialData } : {}),
     staleTime: 15_000,
   });
+}
+
+/**
+ * Polls for GitHub repositories discovered after the user's baseline scan.
+ * Existing repositories are filtered out by the API, so this only surfaces
+ * genuinely new repositories.
+ */
+export function useRepositoryAlerts(workspaceSlug: string) {
+  const queryClient = useQueryClient();
+  const connected = useUserStore(selectGithubConnected);
+  const ready = useUserStore(selectGithubReady);
+  const queryKey = queryKeys.repositoryAlerts(workspaceSlug);
+
+  const query = useQuery<RepositoryAlert[]>({
+    queryKey,
+    enabled: connected && ready && workspaceSlug.length > 0,
+    queryFn: fetchRepositoryAlerts,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+    retry: false,
+  });
+
+  const dismiss = async (alertId: string) => {
+    await dismissRepositoryAlert(alertId);
+    queryClient.setQueryData<RepositoryAlert[]>(queryKey, (current) =>
+      (current ?? []).filter((alert) => alert.id !== alertId),
+    );
+  };
+
+  const markImported = async (repositoryId: string) => {
+    await markRepositoryAlertImported(repositoryId);
+    queryClient.setQueryData<RepositoryAlert[]>(queryKey, (current) =>
+      (current ?? []).filter(
+        (alert) => alert.repository.id !== repositoryId,
+      ),
+    );
+  };
+
+  return {
+    ...query,
+    alerts: query.data ?? [],
+    dismiss,
+    markImported,
+  };
 }
