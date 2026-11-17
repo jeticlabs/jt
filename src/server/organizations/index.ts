@@ -12,6 +12,7 @@ import type {
   MyPermissions,
 } from "@/features/permissions/types";
 import type { Sandbox } from "@/features/sandbox/types";
+import type { GitHubAppConnection } from "@/features/github/types";
 import { BackendError, backendFetch } from "@/server/api/backend";
 
 const ORGANIZATIONS_PAGE_SIZE = 100;
@@ -122,6 +123,16 @@ export async function getMemberPermissions(
     : "";
   return backendFetch<MemberPermissions>(
     `/v1/organizations/${encodeURIComponent(organizationId)}/permissions/members/${encodeURIComponent(memberId)}${query}`,
+    token,
+  );
+}
+
+export async function getGitHubAppConnection(
+  token: string,
+  workspaceId: string,
+): Promise<GitHubAppConnection> {
+  return backendFetch<GitHubAppConnection>(
+    `/v1/github/app/connection?workspaceId=${encodeURIComponent(workspaceId)}`,
     token,
   );
 }

@@ -137,7 +137,7 @@ export default function RunReviewCard() {
   const [phase, setPhase] = useState<Phase>("waiting");
   const [wait, setWait] = useState(BASE.wait);
   const waitRef = useRef(BASE.wait);
-  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const live = phase === "waiting" || phase === "sending";
 

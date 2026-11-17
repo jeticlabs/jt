@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowUpRight,
   Bell,
@@ -29,7 +30,13 @@ import {
 } from "@/components/ui/skeleton";
 import { apiFetch, errorMessage } from "@/lib/api/browser";
 import { GitHubIcon } from "@/components/icons/github-icon";
-import { useGithubStore, useUserStore } from "@/context";
+import { useGithubAppConnection, useWorkspacePermissions } from "@/cache";
+import { queryKeys } from "@/cache/query-keys";
+import {
+  disconnectGithubAppInstallation,
+  startGithubAppInstallation,
+} from "@/features/github/github.api";
+import { useUserStore, useGithubStore } from "@/context";
 
 /* -------------------------------------------------------------------------- */
 /*                                   Types                                    */
@@ -1273,35 +1280,57 @@ function PasswordPanel({
 }
 
 function ConnectedAccountsPanel({
-  user,
-  onProfileChange,
+  workspaceId,
+  workspaceSlug,
 }: {
-  user: AccountUser;
-  onProfileChange: (user: AccountUser) => void;
+  workspaceId: string;
+  workspaceSlug: string;
 }) {
+  const queryClient = useQueryClient();
+  const connectionQuery = useGithubAppConnection(workspaceId);
+  const permissionsQuery = useWorkspacePermissions(workspaceSlug);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const githubConnection = useUserStore((state) => state.github);
 
-  const connect = () => {
-    const next = window.location.pathname;
-    const destination = `/api/auth/github/connect?next=${encodeURIComponent(next)}`;
-    window.location.assign(new URL(destination, window.location.origin).toString());
-  };
+  const connection = connectionQuery.data;
+  const activeInstallation =
+    connection?.installations.find((installation) => !installation.suspended) ??
+    null;
+  const connected = Boolean(activeInstallation);
+  const suspended = Boolean(connection?.connected && !activeInstallation);
+  const canManage =
+    permissionsQuery.data?.permissions["workspace.integrations.manage"] === true;
 
-  const disconnect = async () => {
+  const connect = async () => {
     if (busy) return;
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
-      const result = await apiFetch<UserEnvelope>("/v1/users/me/github", {
-        method: "DELETE",
+      const result = await startGithubAppInstallation(workspaceId);
+      window.location.assign(result.url);
+    } catch (cause) {
+      setError(errorMessage(cause));
+      setBusy(false);
+    }
+  };
+
+  const disconnect = async () => {
+    if (busy || !activeInstallation) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await disconnectGithubAppInstallation(
+        workspaceId,
+        activeInstallation.installationId,
+      );
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.githubAppConnection(workspaceId),
       });
-      onProfileChange(result.user);
       useGithubStore.getState().reset();
-      setNotice("GitHub disconnected.");
+      setNotice("GitHub App disconnected. Existing sandboxes are unchanged.");
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
@@ -1309,26 +1338,29 @@ function ConnectedAccountsPanel({
     }
   };
 
-  const connected = user.githubId !== null;
-  const credentialsStored =
-    githubConnection?.credentialsStored ?? user.githubCredentialsStored;
-  const needsReconnect = connected && !credentialsStored;
-  const profileUrl =
-    user.githubUsername !== null
-      ? `https://github.com/${encodeURIComponent(user.githubUsername)}`
-      : null;
+  const profileUrl = activeInstallation
+    ? `https://github.com/${encodeURIComponent(activeInstallation.accountLogin)}`
+    : null;
+
+  const statusLabel = connected
+    ? "Connected"
+    : suspended
+      ? "Suspended"
+      : connectionQuery.isPending
+        ? "Checking…"
+        : "Not connected";
 
   return (
     <SectionCard
-      title="Connected accounts"
-      description="Use GitHub to sign in or create this account."
+      title="GitHub App"
+      description="Repository access for sandboxes is granted through a GitHub App installation. Installation tokens refresh automatically."
       footer={
         <span>
-          {needsReconnect
-            ? "GitHub is linked, but repository access needs to be reauthorized."
-            : connected
-              ? "GitHub is linked to this Jetic account."
-              : "Connect GitHub to sign in with your GitHub identity."}
+          {connected
+            ? "The GitHub App is connected to this workspace."
+            : suspended
+              ? "The installation is suspended or was revoked. Reconnect it to restore repository access."
+              : "Install the Jetic GitHub App to import repositories."}
         </span>
       }
     >
@@ -1339,27 +1371,22 @@ function ConnectedAccountsPanel({
           </span>
           <div className="min-w-0">
             <p className="truncate text-[12.5px] font-medium text-white">
-              {user.githubUsername ? `@${user.githubUsername}` : "GitHub"}
+              {activeInstallation
+                ? activeInstallation.accountLogin
+                : "GitHub App"}
             </p>
             <p className="jetic-muted mt-0.5 text-[11.5px]">
-              {needsReconnect
-                ? "Reconnect required"
-                : connected
-                  ? "Connected"
-                  : "Not connected"}
+              {statusLabel}
+              {activeInstallation
+                ? ` · ${activeInstallation.accountType.toLowerCase()}`
+                : ""}
             </p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {connected ? (
+          {connected && activeInstallation ? (
             <>
-              {needsReconnect && (
-                <button type="button" onClick={connect} className={primaryButton}>
-                  <GitHubIcon size={13} />
-                  Reconnect
-                </button>
-              )}
               {profileUrl && (
                 <a
                   href={profileUrl}
@@ -1367,31 +1394,63 @@ function ConnectedAccountsPanel({
                   rel="noreferrer"
                   className={secondaryButton}
                 >
-                  View profile
+                  View account
                   <ArrowUpRight size={12} />
                 </a>
               )}
-              <button
-                type="button"
-                onClick={() => void disconnect()}
-                disabled={busy}
-                className={dangerButton}
+              <a
+                href={`https://github.com/settings/installations/${encodeURIComponent(activeInstallation.installationId)}`}
+                target="_blank"
+                rel="noreferrer"
+                className={secondaryButton}
               >
-                {busy ? "Disconnecting…" : "Disconnect"}
-              </button>
+                Manage
+                <ArrowUpRight size={12} />
+              </a>
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={() => void disconnect()}
+                  disabled={busy}
+                  className={dangerButton}
+                >
+                  {busy ? "Disconnecting…" : "Disconnect"}
+                </button>
+              )}
             </>
-          ) : (
-            <button type="button" onClick={connect} className={primaryButton}>
+          ) : canManage ? (
+            <button
+              type="button"
+              onClick={() => void connect()}
+              disabled={busy}
+              className={primaryButton}
+            >
               <GitHubIcon size={13} />
-              Connect GitHub
+              {busy
+                ? "Opening GitHub…"
+                : suspended
+                  ? "Reconnect GitHub App"
+                  : "Install GitHub App"}
             </button>
+          ) : (
+            <span className="jetic-muted text-[11.5px]">
+              Only workspace admins can manage the GitHub App.
+            </span>
           )}
         </div>
       </div>
 
-      {(error || notice) && (
+      {(error || notice || connectionQuery.isError) && (
         <div className="mt-3">
-          <Notice error={error} notice={notice} />
+          <Notice
+            error={
+              error ??
+              (connectionQuery.isError
+                ? errorMessage(connectionQuery.error)
+                : null)
+            }
+            notice={notice}
+          />
         </div>
       )}
     </SectionCard>
@@ -1405,6 +1464,8 @@ function SettingsPanel({
   onRetry,
   onNavigate,
   onProfileChange,
+  workspaceId,
+  workspaceSlug,
 }: {
   user: AccountUser | null;
   loading: boolean;
@@ -1412,6 +1473,8 @@ function SettingsPanel({
   onRetry: () => void;
   onNavigate: (tab: AccountTab) => void;
   onProfileChange: (user: AccountUser) => void;
+  workspaceId: string;
+  workspaceSlug: string;
 }) {
   const [events, setEvents] = useState<SecurityEvent[] | null>(null);
   const [page, setPage] = useState<SecurityEventPage["page"] | null>(null);
@@ -1508,7 +1571,10 @@ function SettingsPanel({
       {user && (
         <>
           <PasswordPanel user={user} onProfileChange={onProfileChange} />
-          <ConnectedAccountsPanel user={user} onProfileChange={onProfileChange} />
+          <ConnectedAccountsPanel
+            workspaceId={workspaceId}
+            workspaceSlug={workspaceSlug}
+          />
         </>
       )}
 
@@ -1914,10 +1980,14 @@ function AccountDialogContent({
   user,
   onSignOut,
   onClose,
+  workspaceId,
+  workspaceSlug,
 }: {
   user: { name: string; email: string };
   onSignOut: () => void;
   onClose: () => void;
+  workspaceId: string;
+  workspaceSlug: string;
 }) {
   const [tab, setTab] = useState<AccountTab>("profile");
   const [profile, setProfile] = useState<AccountUser | null>(null);
@@ -1952,7 +2022,6 @@ function AccountDialogContent({
   const updateProfile = (next: AccountUser) => {
     setProfile(next);
     useUserStore.getState().setUser(next);
-    void useUserStore.getState().refreshGithub();
   };
 
   useEffect(() => {
@@ -1964,7 +2033,6 @@ function AccountDialogContent({
         if (!cancelled) {
           setProfile(result.user);
           useUserStore.getState().setUser(result.user);
-          void useUserStore.getState().refreshGithub();
         }
       } catch (cause) {
         if (!cancelled) setProfileError(errorMessage(cause));
@@ -2120,6 +2188,8 @@ function AccountDialogContent({
                 onRetry={retryProfile}
                 onNavigate={setTab}
                 onProfileChange={updateProfile}
+                workspaceId={workspaceId}
+                workspaceSlug={workspaceSlug}
               />
             )}
             {tab === "privacy" && <PrivacyPanel />}
@@ -2137,13 +2207,30 @@ export interface AccountDialogProps {
   user: { name: string; email: string };
   onSignOut: () => void;
   onClose: () => void;
+  workspaceId: string;
+  workspaceSlug: string;
 }
 
 /**
  * Account settings dialog. The profile, devices/sessions, and security activity
  * panels read and mutate real data through the authenticated browser API.
  */
-export function AccountDialog({ open, user, onSignOut, onClose }: AccountDialogProps) {
+export function AccountDialog({
+  open,
+  user,
+  onSignOut,
+  onClose,
+  workspaceId,
+  workspaceSlug,
+}: AccountDialogProps) {
   if (!open) return null;
-  return <AccountDialogContent user={user} onSignOut={onSignOut} onClose={onClose} />;
+  return (
+    <AccountDialogContent
+      user={user}
+      onSignOut={onSignOut}
+      onClose={onClose}
+      workspaceId={workspaceId}
+      workspaceSlug={workspaceSlug}
+    />
+  );
 }

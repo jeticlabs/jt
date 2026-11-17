@@ -48,6 +48,26 @@ export interface GitHubRepositoryPage {
   };
 }
 
+export interface GitHubAppInstallation {
+  readonly id: string;
+  readonly installationId: string;
+  readonly accountLogin: string;
+  readonly accountType: string;
+  readonly repositorySelection: string | null;
+  readonly suspended: boolean;
+  readonly createdAt: string;
+}
+
+export interface GitHubAppConnection {
+  readonly connected: boolean;
+  readonly installationId: string | null;
+  readonly accountLogin: string | null;
+  readonly accountType: string | null;
+  readonly repositorySelection: string | null;
+  readonly suspended: boolean;
+  readonly installations: GitHubAppInstallation[];
+}
+
 export interface RepositoryAlert {
   readonly id: string;
   readonly discoveredAt: string;

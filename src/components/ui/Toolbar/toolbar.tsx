@@ -713,6 +713,8 @@ export default function Toolbar({
                 user={user}
                 onSignOut={() => void signOut()}
                 onClose={() => setAccountOpen(false)}
+                workspaceId={workspace.id}
+                workspaceSlug={workspace.slug}
             />
 
             {createWorkspaceOpen && (

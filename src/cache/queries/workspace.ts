@@ -16,7 +16,11 @@ import {
   fetchRepositoryAlerts,
   markRepositoryAlertImported,
 } from "@/features/github/repository-alerts.api";
-import type { RepositoryAlert } from "@/features/github/types";
+import { fetchGithubAppConnection } from "@/features/github/github.api";
+import type {
+  GitHubAppConnection,
+  RepositoryAlert,
+} from "@/features/github/types";
 import { getSandboxBySlug, listSandboxes } from "@/features/sandbox/sandbox.api";
 import type { Sandbox } from "@/features/sandbox/types";
 import { resolveWorkspaceBySlug } from "@/features/workspace/api";
@@ -29,11 +33,6 @@ import type {
   Member,
   OrganizationMembership,
 } from "@/features/workspace/types";
-import {
-  selectGithubConnected,
-  selectGithubReady,
-  useUserStore,
-} from "@/context";
 import { queryKeys } from "../query-keys";
 
 /** Workspace slug → organization membership, shared by all workspace pages. */
@@ -217,14 +216,20 @@ export function useMemberPermissions(
  */
 export function useRepositoryAlerts(workspaceSlug: string) {
   const queryClient = useQueryClient();
-  const connected = useUserStore(selectGithubConnected);
-  const ready = useUserStore(selectGithubReady);
+  const workspace = useWorkspaceBySlug(workspaceSlug);
+  const organizationId = workspace.data?.organization.id ?? null;
+  const connection = useGithubAppConnection(organizationId);
+  const connected = Boolean(
+    connection.data?.connected && !connection.data.suspended,
+  );
   const queryKey = queryKeys.repositoryAlerts(workspaceSlug);
 
   const query = useQuery<RepositoryAlert[]>({
     queryKey,
-    enabled: connected && ready && workspaceSlug.length > 0,
-    queryFn: fetchRepositoryAlerts,
+    enabled: connected && Boolean(organizationId) && workspaceSlug.length > 0,
+    queryFn: async () => {
+      return fetchRepositoryAlerts(organizationId ?? "");
+    },
     staleTime: 30_000,
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,
@@ -253,4 +258,17 @@ export function useRepositoryAlerts(workspaceSlug: string) {
     dismiss,
     markImported,
   };
+}
+
+export function useGithubAppConnection(
+  workspaceId: string | null,
+  initialData?: GitHubAppConnection,
+) {
+  return useQuery<GitHubAppConnection>({
+    queryKey: queryKeys.githubAppConnection(workspaceId ?? ""),
+    enabled: Boolean(workspaceId),
+    queryFn: () => fetchGithubAppConnection(workspaceId ?? ""),
+    ...(initialData ? { initialData } : {}),
+    staleTime: 30_000,
+  });
 }

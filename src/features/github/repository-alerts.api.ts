@@ -1,9 +1,11 @@
 import { apiFetch } from "@/lib/api/browser";
 import type { RepositoryAlert } from "./types";
 
-export async function fetchRepositoryAlerts(): Promise<RepositoryAlert[]> {
+export async function fetchRepositoryAlerts(
+  workspaceId: string,
+): Promise<RepositoryAlert[]> {
   const result = await apiFetch<{ data: RepositoryAlert[] }>(
-    "/v1/github/repository-alerts",
+    `/v1/github/repository-alerts?workspaceId=${encodeURIComponent(workspaceId)}`,
   );
   return result.data;
 }

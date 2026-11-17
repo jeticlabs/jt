@@ -11,6 +11,7 @@ export {
   useSandboxPermissions,
   useMemberPermissions,
   useRepositoryAlerts,
+  useGithubAppConnection,
 } from "./queries/workspace";
 export {
   useActivityFeed,

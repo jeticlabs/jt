@@ -36,6 +36,9 @@ export const queryKeys = {
   repositoryAlerts: (workspaceSlug: string) =>
     [...queryKeys.workspace(workspaceSlug), "github-repository-alerts"] as const,
 
+  githubAppConnection: (workspaceId: string) =>
+    [...queryKeys.all, "github-app-connection", workspaceId] as const,
+
   memberPermissions: (
     workspaceSlug: string,
     memberId: string,

@@ -32,13 +32,10 @@ import { JeticAnimatedIcon } from "@/components/jetic-animated-icon";
 import { GitHubIcon } from "@/components/icons/github-icon";
 import { needsGithubReconnectMessage } from "@/features/github/errors";
 import { markRepositoryAlertImported } from "@/features/github/repository-alerts.api";
-import { queryKeys } from "@/cache";
+import { queryKeys, useGithubAppConnection } from "@/cache";
 import {
-  selectGithubConnected,
-  selectGithubReady,
   useGithubStore,
   useSandboxDraftStore,
-  useUserStore,
 } from "@/context";
 import { createSandbox, getSandboxStatus, startSandbox } from "@/features/sandbox/sandbox.api";
 import type { Sandbox } from "@/features/sandbox/types";
@@ -489,14 +486,12 @@ export function CreateSandboxDialog({
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const userStatus = useUserStore((state) => state.status);
-  const userError = useUserStore((state) => state.error);
-  const githubConnected = useUserStore(selectGithubConnected);
-  const githubReady = useUserStore(selectGithubReady);
-  const githubUsername = useUserStore(
-    (state) => state.github?.username ?? state.user?.githubUsername ?? null,
+  const connectionQuery = useGithubAppConnection(workspaceId);
+  const githubConnected = connectionQuery.data?.connected ?? false;
+  const githubReady = Boolean(
+    connectionQuery.data?.connected && !connectionQuery.data.suspended,
   );
-  const loadUser = useUserStore((state) => state.load);
+  const githubUsername = connectionQuery.data?.accountLogin ?? null;
 
   const accounts = useGithubStore((state) => state.accounts);
   const accountsStatus = useGithubStore((state) => state.accountsStatus);
@@ -560,10 +555,6 @@ export function CreateSandboxDialog({
   }, [resetDraft, resetGithub, initialRepository, selectRepository]);
 
   useEffect(() => {
-    void loadUser({ force: true });
-  }, [loadUser]);
-
-  useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") handleClose();
     };
@@ -575,22 +566,26 @@ export function CreateSandboxDialog({
   /* Load GitHub accounts when entering the repository picker. */
   useEffect(() => {
     if (step !== "repositories" || !githubReady) return;
-    void loadAccounts();
-  }, [step, githubReady, loadAccounts]);
+    void loadAccounts(workspaceId);
+  }, [step, githubReady, loadAccounts, workspaceId]);
 
   /* Default to the first account (the connected user) once accounts arrive. */
   useEffect(() => {
     if (step !== "repositories" || !githubReady || repositoryOwner !== null) return;
     const first = accounts[0];
     if (!first) return;
-    void loadRepositories({ owner: first.login, query: "", force: true });
-  }, [step, githubReady, repositoryOwner, accounts, loadRepositories]);
+    void loadRepositories(workspaceId, { owner: first.login, query: "", force: true });
+  }, [step, githubReady, repositoryOwner, accounts, loadRepositories, workspaceId]);
 
   /* Load branches for the selected repository. */
   useEffect(() => {
     if (step !== "configure" || !selectedRepository) return;
-    void loadBranches(selectedRepository.owner, selectedRepository.name);
-  }, [step, selectedRepository, loadBranches]);
+    void loadBranches(
+      workspaceId,
+      selectedRepository.owner,
+      selectedRepository.name,
+    );
+  }, [step, selectedRepository, loadBranches, workspaceId]);
 
   /* Poll the API while the sandbox is being provisioned. */
   useEffect(() => {
@@ -636,16 +631,13 @@ export function CreateSandboxDialog({
   const connectGithub = () => {
     const next =
       typeof window === "undefined" ? undefined : window.location.pathname;
-    const destination = `/api/auth/github/connect${next ? `?next=${encodeURIComponent(next)}` : ""}`;
-    window.location.assign(
-      typeof window === "undefined"
-        ? destination
-        : new URL(destination, window.location.origin).toString(),
-    );
+    const params = new URLSearchParams({ workspaceId });
+    if (next) params.set("next", next);
+    window.location.href = `/api/integrations/github/install?${params.toString()}`;
   };
 
   const handleGithubCard = () => {
-    if (userStatus === "loading" || userStatus === "idle") return;
+    if (connectionQuery.isPending) return;
     if (!githubConnected) {
       connectGithub();
       return;
@@ -917,7 +909,7 @@ export function CreateSandboxDialog({
                 <span className="block p-3.5 pr-9">
                   <span className="flex items-center gap-2">
                     <span className="block text-[13.5px] font-semibold">
-                      {githubConnected ? "Import from GitHub" : "Connect GitHub"}
+                      {githubConnected ? "Import from GitHub" : "Install GitHub App"}
                     </span>
                     {githubConnected && githubUsername && (
                       <span className="jetic-pill jetic-pill-hobby text-[10px]">
@@ -926,18 +918,18 @@ export function CreateSandboxDialog({
                     )}
                   </span>
                   <span className="jetic-muted mt-1 block text-[11.5px] leading-5">
-                    {userStatus === "loading" || userStatus === "idle"
-                      ? "Checking your GitHub connection…"
+                    {connectionQuery.isPending
+                      ? "Checking your GitHub App connection…"
                       : githubConnected
                         ? githubReady
                           ? "Clone a repository and open it in a fresh sandbox."
-                          : "Reconnect GitHub to grant repository access."
-                        : "Link your GitHub account to list repositories."}
+                          : "Reconnect the GitHub App to restore repository access."
+                        : "Install the Jetic GitHub App to browse and clone repositories."}
                   </span>
-                  {userStatus === "error" && (
+                  {connectionQuery.isError && (
                     <span className="mt-2 flex items-center gap-1.5 text-[11px] text-red-300">
                       <AlertCircle size={12} />
-                      {userError ?? "Could not check GitHub."}
+                      {errorMessage(connectionQuery.error)}
                     </span>
                   )}
                 </span>
@@ -955,22 +947,22 @@ export function CreateSandboxDialog({
                   </span>
                   <div>
                     <h3 className="text-[15px] font-semibold">
-                      {githubConnected ? "Reconnect GitHub" : "Connect GitHub"}
+                      {githubConnected ? "Reconnect GitHub App" : "Install GitHub App"}
                     </h3>
                     <p className="jetic-muted mx-auto mt-1 max-w-sm text-[12.5px] leading-5">
                       {githubConnected
-                        ? "Your GitHub authorization is missing the repository scope. Reconnect to browse and clone your repositories."
-                        : "Jetic uses GitHub to list your repositories and clone the one you choose into a sandbox."}
+                        ? "The GitHub App installation is suspended or unavailable. Reconnect it to browse and clone your repositories."
+                        : "Jetic uses the GitHub App to list your repositories and clone the one you choose into a sandbox."}
                     </p>
                   </div>
                   <button type="button" onClick={connectGithub} className={primaryButton}>
                     <GitHubIcon size={14} />
-                    {githubConnected ? "Reconnect GitHub" : "Connect GitHub"}
+                    {githubConnected ? "Reconnect GitHub App" : "Install GitHub App"}
                   </button>
-                  {userStatus === "error" && (
+                  {connectionQuery.isError && (
                     <button
                       type="button"
-                      onClick={() => void loadUser({ force: true })}
+                      onClick={() => void connectionQuery.refetch()}
                       className="text-[12px] text-[var(--jetic-link)] hover:underline"
                     >
                       Retry connection check
@@ -990,7 +982,7 @@ export function CreateSandboxDialog({
                         value={selectedOwner ?? ""}
                         onChange={(owner) => {
                           setRepoQuery("");
-                          void loadRepositories({ owner, query: "", force: true });
+                          void loadRepositories(workspaceId, { owner, query: "", force: true });
                         }}
                         label="GitHub account"
                         compact
@@ -1066,7 +1058,7 @@ export function CreateSandboxDialog({
                         <button
                           type="button"
                           onClick={() =>
-                            void loadRepositories({
+                            void loadRepositories(workspaceId, {
                               owner: selectedOwner,
                               query: repoQuery,
                               force: true,
@@ -1158,7 +1150,7 @@ export function CreateSandboxDialog({
                         type="button"
                         disabled={repositoriesLoadingMore}
                         onClick={() =>
-                          void loadRepositories({
+                          void loadRepositories(workspaceId, {
                             owner: selectedOwner,
                             query: repoQuery,
                             page: repositoryPage.page + 1,

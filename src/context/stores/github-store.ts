@@ -38,15 +38,22 @@ interface GithubState {
   readonly branchStatus: Record<string, AsyncStatus>;
   readonly branchError: Record<string, string | null>;
 
-  loadAccounts: (options?: { force?: boolean }) => Promise<void>;
-  loadRepositories: (options?: {
-    owner?: string | null;
-    query?: string | null;
-    page?: number;
-    append?: boolean;
-    force?: boolean;
-  }) => Promise<void>;
+  loadAccounts: (
+    workspaceId: string,
+    options?: { force?: boolean },
+  ) => Promise<void>;
+  loadRepositories: (
+    workspaceId: string,
+    options?: {
+      owner?: string | null;
+      query?: string | null;
+      page?: number;
+      append?: boolean;
+      force?: boolean;
+    },
+  ) => Promise<void>;
   loadBranches: (
+    workspaceId: string,
     owner: string,
     repository: string,
     options?: { force?: boolean },
@@ -79,7 +86,7 @@ const initialState = {
 export const useGithubStore = create<GithubState>((set, get) => ({
   ...initialState,
 
-  async loadAccounts(options = {}) {
+  async loadAccounts(workspaceId, options = {}) {
     const { accountsStatus } = get();
     if (!options.force && (accountsStatus === "loading" || accountsStatus === "ready")) {
       return;
@@ -88,7 +95,7 @@ export const useGithubStore = create<GithubState>((set, get) => ({
     set({ accountsStatus: "loading", accountsError: null });
     try {
       set({
-        accounts: await fetchGithubAccounts(),
+        accounts: await fetchGithubAccounts(workspaceId),
         accountsStatus: "ready",
         accountsError: null,
       });
@@ -97,7 +104,7 @@ export const useGithubStore = create<GithubState>((set, get) => ({
     }
   },
 
-  async loadRepositories(options = {}) {
+  async loadRepositories(workspaceId, options = {}) {
     const {
       repositoryRequest,
       repositoryOwner,
@@ -128,7 +135,7 @@ export const useGithubStore = create<GithubState>((set, get) => ({
     });
 
     try {
-      const result = await fetchGithubRepositories({
+      const result = await fetchGithubRepositories(workspaceId, {
         owner,
         query,
         page,
@@ -158,7 +165,7 @@ export const useGithubStore = create<GithubState>((set, get) => ({
     }
   },
 
-  async loadBranches(owner, repository, options = {}) {
+  async loadBranches(workspaceId, owner, repository, options = {}) {
     const key = branchKey(owner, repository);
     const status = get().branchStatus[key];
     if (!options.force && (status === "loading" || status === "ready")) return;
@@ -169,7 +176,7 @@ export const useGithubStore = create<GithubState>((set, get) => ({
     }));
 
     try {
-      const branches = await fetchGithubBranches(owner, repository);
+      const branches = await fetchGithubBranches(workspaceId, owner, repository);
       set((state) => ({
         branches: { ...state.branches, [key]: branches },
         branchStatus: { ...state.branchStatus, [key]: "ready" },
