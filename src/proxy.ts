@@ -18,6 +18,18 @@ function isProductRoute(pathname: string): boolean {
   return pathname === "/app" || pathname.startsWith("/app/");
 }
 
+/**
+ * The GitHub App setup URL must survive an unauthenticated redirect. The page
+ * itself validates the session and forwards the full URL (including GitHub's
+ * installation_id and state) through the sign-in `next` parameter.
+ */
+function isGithubSetupRoute(pathname: string): boolean {
+  return (
+    pathname === "/app/integrations/github" ||
+    pathname === "/integrations/github"
+  );
+}
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -25,6 +37,7 @@ export function proxy(request: NextRequest) {
   // API; this just avoids even starting a render without a cookie.
   if (
     isProductRoute(pathname) &&
+    !isGithubSetupRoute(pathname) &&
     !SESSION_COOKIE_NAMES.some((name) => request.cookies.has(name))
   ) {
     const signIn = request.nextUrl.clone();

@@ -35,6 +35,7 @@ import { queryKeys } from "@/cache/query-keys";
 import {
   disconnectGithubAppInstallation,
   startGithubAppInstallation,
+  syncGithubAppInstallations,
 } from "@/features/github/github.api";
 import { useUserStore, useGithubStore } from "@/context";
 
@@ -1299,6 +1300,7 @@ function ConnectedAccountsPanel({
     null;
   const connected = Boolean(activeInstallation);
   const suspended = Boolean(connection?.connected && !activeInstallation);
+  const configured = connection?.appConfigured ?? true;
   const canManage =
     permissionsQuery.data?.permissions["workspace.integrations.manage"] === true;
 
@@ -1341,6 +1343,33 @@ function ConnectedAccountsPanel({
   const profileUrl = activeInstallation
     ? `https://github.com/${encodeURIComponent(activeInstallation.accountLogin)}`
     : null;
+
+  const sync = async () => {
+    if (busy || !canManage) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await syncGithubAppInstallations(workspaceId);
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.githubAppConnection(workspaceId),
+      });
+      if (result.connected > 0) {
+        useGithubStore.getState().reset();
+        setNotice(
+          `Connected ${result.connected} existing GitHub App installation${result.connected === 1 ? "" : "s"}.`,
+        );
+      } else {
+        setError(
+          "No matching GitHub App installation was found for your GitHub account.",
+        );
+      }
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const statusLabel = connected
     ? "Connected"
@@ -1419,19 +1448,29 @@ function ConnectedAccountsPanel({
               )}
             </>
           ) : canManage ? (
-            <button
-              type="button"
-              onClick={() => void connect()}
-              disabled={busy}
-              className={primaryButton}
-            >
-              <GitHubIcon size={13} />
-              {busy
-                ? "Opening GitHub…"
-                : suspended
-                  ? "Reconnect GitHub App"
-                  : "Install GitHub App"}
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => void sync()}
+                disabled={busy || !configured}
+                className={secondaryButton}
+              >
+                {busy ? "Working…" : "Sync existing installation"}
+              </button>
+              <button
+                type="button"
+                onClick={() => void connect()}
+                disabled={busy || !configured}
+                className={primaryButton}
+              >
+                <GitHubIcon size={13} />
+                {busy
+                  ? "Opening GitHub…"
+                  : suspended
+                    ? "Reconnect GitHub App"
+                    : "Install GitHub App"}
+              </button>
+            </>
           ) : (
             <span className="jetic-muted text-[11.5px]">
               Only workspace admins can manage the GitHub App.
@@ -1452,6 +1491,14 @@ function ConnectedAccountsPanel({
             notice={notice}
           />
         </div>
+      )}
+
+      {!configured && (
+        <p className="mt-3 rounded-md border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-[11.5px] leading-5 text-amber-200">
+          The GitHub App is not configured on this API deployment. Add
+          GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY, and GITHUB_APP_SLUG to the API
+          environment, then restart it.
+        </p>
       )}
     </SectionCard>
   );

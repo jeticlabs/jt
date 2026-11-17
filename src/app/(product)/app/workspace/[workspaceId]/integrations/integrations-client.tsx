@@ -11,6 +11,7 @@ import { useGithubStore } from "@/context";
 import {
   disconnectGithubAppInstallation,
   startGithubAppInstallation,
+  syncGithubAppInstallations,
 } from "@/features/github/github.api";
 import type { GitHubAppConnection } from "@/features/github/types";
 import { errorMessage } from "@/lib/api/browser";
@@ -94,6 +95,7 @@ export function IntegrationsClient({
     null;
   const connected = Boolean(activeInstallation);
   const suspended = connection.connected && !connected;
+  const configured = connection.appConfigured;
 
   const refresh = async () => {
     await queryClient.invalidateQueries({
@@ -127,6 +129,31 @@ export function IntegrationsClient({
       useGithubStore.getState().reset();
       setNotice("GitHub App disconnected. Existing sandboxes are unchanged.");
       await refresh();
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const sync = async () => {
+    if (!canManage) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await syncGithubAppInstallations(workspaceId);
+      await refresh();
+      if (result.connected > 0) {
+        useGithubStore.getState().reset();
+        setNotice(
+          `Connected ${result.connected} existing GitHub App installation${result.connected === 1 ? "" : "s"}.`,
+        );
+      } else {
+        setError(
+          "No matching GitHub App installation was found for your GitHub account. Install the App first, or make sure the installation was created from this workspace.",
+        );
+      }
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
@@ -232,6 +259,16 @@ export function IntegrationsClient({
               </p>
             )}
 
+            {!configured && (
+              <p className="rounded-md border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-[11.5px] leading-5 text-amber-200">
+                The GitHub App is not configured on this API deployment. Add{" "}
+                <code className="font-mono">GITHUB_APP_ID</code>,{" "}
+                <code className="font-mono">GITHUB_APP_PRIVATE_KEY</code>, and{" "}
+                <code className="font-mono">GITHUB_APP_SLUG</code> to the API
+                environment, then restart it.
+              </p>
+            )}
+
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3">
               <span className="jetic-muted text-[11.5px]">
                 {connected
@@ -252,13 +289,23 @@ export function IntegrationsClient({
                     <ExternalLink size={12} className="ml-1" />
                   </a>
                 )}
+                {canManage && !connected && (
+                  <button
+                    type="button"
+                    onClick={() => void sync()}
+                    disabled={busy || !configured}
+                    className={secondaryButton}
+                  >
+                    {busy ? "Working…" : "Sync existing installation"}
+                  </button>
+                )}
                 {canManage && (
                   <button
                     type="button"
                     onClick={() =>
                       connected ? void disconnect() : void connect()
                     }
-                    disabled={busy}
+                    disabled={busy || (!connected && !configured)}
                     className={connected ? secondaryButton : primaryButton}
                   >
                     {busy

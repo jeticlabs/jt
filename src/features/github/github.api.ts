@@ -38,6 +38,15 @@ export function disconnectGithubAppInstallation(
   );
 }
 
+export function syncGithubAppInstallations(
+  workspaceId: string,
+): Promise<{ connected: number; connection: GitHubAppConnection }> {
+  return apiFetch<{ connected: number; connection: GitHubAppConnection }>(
+    "/v1/github/app/installations/sync",
+    { method: "POST", body: { workspaceId } },
+  );
+}
+
 export async function fetchGithubAccounts(
   workspaceId: string,
 ): Promise<GitHubAccount[]> {

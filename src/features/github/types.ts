@@ -60,6 +60,7 @@ export interface GitHubAppInstallation {
 
 export interface GitHubAppConnection {
   readonly connected: boolean;
+  readonly appConfigured: boolean;
   readonly installationId: string | null;
   readonly accountLogin: string | null;
   readonly accountType: string | null;

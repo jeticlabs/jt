@@ -32,6 +32,7 @@ import { JeticAnimatedIcon } from "@/components/jetic-animated-icon";
 import { GitHubIcon } from "@/components/icons/github-icon";
 import { needsGithubReconnectMessage } from "@/features/github/errors";
 import { markRepositoryAlertImported } from "@/features/github/repository-alerts.api";
+import { syncGithubAppInstallations } from "@/features/github/github.api";
 import { queryKeys, useGithubAppConnection } from "@/cache";
 import {
   useGithubStore,
@@ -491,7 +492,10 @@ export function CreateSandboxDialog({
   const githubReady = Boolean(
     connectionQuery.data?.connected && !connectionQuery.data.suspended,
   );
+  const githubConfigured = connectionQuery.data?.appConfigured ?? true;
   const githubUsername = connectionQuery.data?.accountLogin ?? null;
+  const [githubSyncing, setGithubSyncing] = useState(false);
+  const [githubSyncError, setGithubSyncError] = useState<string | null>(null);
 
   const accounts = useGithubStore((state) => state.accounts);
   const accountsStatus = useGithubStore((state) => state.accountsStatus);
@@ -638,15 +642,30 @@ export function CreateSandboxDialog({
 
   const handleGithubCard = () => {
     if (connectionQuery.isPending) return;
-    if (!githubConnected) {
-      connectGithub();
-      return;
-    }
-    if (!githubReady) {
-      connectGithub();
-      return;
-    }
+    setGithubSyncError(null);
     setStep("repositories");
+  };
+
+  const syncGithub = async () => {
+    if (githubSyncing) return;
+    setGithubSyncing(true);
+    setGithubSyncError(null);
+    try {
+      const result = await syncGithubAppInstallations(workspaceId);
+      await connectionQuery.refetch();
+      if (result.connection.connected && !result.connection.suspended) {
+        useGithubStore.getState().reset();
+        setStep("repositories");
+      } else {
+        setGithubSyncError(
+          "No matching GitHub App installation was found for your GitHub account. Install the App first, or install it from this workspace.",
+        );
+      }
+    } catch (cause) {
+      setGithubSyncError(errorMessage(cause));
+    } finally {
+      setGithubSyncing(false);
+    }
   };
 
   const accountOptions = useMemo<SelectOption[]>(
@@ -955,10 +974,38 @@ export function CreateSandboxDialog({
                         : "Jetic uses the GitHub App to list your repositories and clone the one you choose into a sandbox."}
                     </p>
                   </div>
-                  <button type="button" onClick={connectGithub} className={primaryButton}>
-                    <GitHubIcon size={14} />
-                    {githubConnected ? "Reconnect GitHub App" : "Install GitHub App"}
-                  </button>
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void syncGithub()}
+                      disabled={githubSyncing || !githubConfigured}
+                      className={secondaryButton}
+                    >
+                      <RefreshCw size={14} className={githubSyncing ? "animate-spin" : undefined} />
+                      {githubSyncing ? "Syncing…" : "Sync existing installation"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={connectGithub}
+                      disabled={!githubConfigured}
+                      className={primaryButton}
+                    >
+                      <GitHubIcon size={14} />
+                      {githubConnected ? "Reconnect GitHub App" : "Install GitHub App"}
+                    </button>
+                  </div>
+                  {!githubConfigured && (
+                    <p className="max-w-md text-[11.5px] leading-5 text-amber-200">
+                      The GitHub App is not configured on this API deployment. Add
+                      GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY, and GITHUB_APP_SLUG to the
+                      API environment, then restart it.
+                    </p>
+                  )}
+                  {githubSyncError && (
+                    <p className="max-w-md text-[11.5px] leading-5 text-red-300">
+                      {githubSyncError}
+                    </p>
+                  )}
                   {connectionQuery.isError && (
                     <button
                       type="button"
