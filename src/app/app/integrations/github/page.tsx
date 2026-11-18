@@ -87,6 +87,7 @@ export default async function GitHubAppSetupPage({
   // has no signed Jetic state. Verify the installation through the GitHub App
   // API and attach only an installation that belongs to this signed-in user.
   if (!state) {
+    let syncError: string | null = null;
     if (workspace) {
       try {
         const result = await backendFetch<{ connected: number }>(
@@ -104,15 +105,26 @@ export default async function GitHubAppSetupPage({
         if (error instanceof BackendError && error.isUnauthorized) {
           redirect(`/sign-in?next=${encodeURIComponent(setupPath(params))}`);
         }
+        syncError =
+          error instanceof BackendError && error.status === 503
+            ? "The GitHub App is not configured on the API deployment. Add GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY, and GITHUB_APP_SLUG, then restart the API."
+            : error instanceof Error
+              ? error.message
+              : "The installation could not be synced.";
       }
     }
 
     return (
       <SetupMessage
-        title="GitHub is installed"
-        description="Jetic could not verify which workspace started this installation. Open your workspace integrations page and click “Sync existing installation”."
+        title={syncError ? "Could not sync GitHub" : "GitHub is installed"}
+        description={
+          syncError ??
+          (workspace
+            ? "Jetic could not verify which workspace started this installation. Open your workspace integrations page and click “Sync existing installation”."
+            : "Create or join a workspace, then open its integrations page and connect the GitHub App.")
+        }
         href={workspaceHref}
-        action="Open GitHub integration"
+        action={workspace ? "Open GitHub integration" : "Open Jetic"}
       />
     );
   }

@@ -939,11 +939,13 @@ export function CreateSandboxDialog({
                   <span className="jetic-muted mt-1 block text-[11.5px] leading-5">
                     {connectionQuery.isPending
                       ? "Checking your GitHub App connection…"
-                      : githubConnected
-                        ? githubReady
-                          ? "Clone a repository and open it in a fresh sandbox."
-                          : "Reconnect the GitHub App to restore repository access."
-                        : "Install the Jetic GitHub App to browse and clone repositories."}
+                      : !githubConfigured
+                        ? "The GitHub App is not configured on this API deployment."
+                        : githubConnected
+                          ? githubReady
+                            ? "Clone a repository and open it in a fresh sandbox."
+                            : "Reconnect the GitHub App to restore repository access."
+                          : "Install the Jetic GitHub App to browse and clone repositories."}
                   </span>
                   {connectionQuery.isError && (
                     <span className="mt-2 flex items-center gap-1.5 text-[11px] text-red-300">
