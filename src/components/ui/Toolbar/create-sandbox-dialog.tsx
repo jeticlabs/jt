@@ -637,7 +637,11 @@ export function CreateSandboxDialog({
       typeof window === "undefined" ? undefined : window.location.pathname;
     const params = new URLSearchParams({ workspaceId });
     if (next) params.set("next", next);
-    window.location.href = `/api/integrations/github/install?${params.toString()}`;
+    const destination = new URL(
+      `/api/integrations/github/install?${params.toString()}`,
+      window.location.origin,
+    );
+    window.location.assign(destination.toString());
   };
 
   const handleGithubCard = () => {
