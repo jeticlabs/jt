@@ -1196,8 +1196,8 @@ export function CreateSandboxDialog({
                         <p className="jetic-muted max-w-md text-[12.5px] leading-5">
                           {connectionQuery.data?.repositorySelection ===
                           "selected"
-                            ? "GitHub reports no repositories granted to this installation. Open GitHub and select the repositories Jetic should be able to import."
-                            : "GitHub reports no repositories available for this account."}
+                            ? "GitHub reports no repositories for this installation. Check that the JeticLabs GitHub App has Contents: Read and Metadata: Read permissions, then grant repository access on GitHub."
+                            : "GitHub reports no repositories available for this account. Check the JeticLabs GitHub App permissions and repository access."}
                         </p>
                         {connectionQuery.data?.installationId && (
                           <a
