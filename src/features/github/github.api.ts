@@ -38,6 +38,16 @@ export function disconnectGithubAppInstallation(
   );
 }
 
+export function uninstallGithubAppInstallation(
+  workspaceId: string,
+  installationId: string,
+): Promise<void> {
+  return apiFetch<void>(
+    `/v1/github/app/installations/${encodeURIComponent(installationId)}/github?workspaceId=${encodeURIComponent(workspaceId)}`,
+    { method: "DELETE" },
+  );
+}
+
 export function syncGithubAppInstallations(
   workspaceId: string,
 ): Promise<{ connected: number; connection: GitHubAppConnection }> {

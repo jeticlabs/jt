@@ -36,6 +36,7 @@ import {
   disconnectGithubAppInstallation,
   startGithubAppInstallation,
   syncGithubAppInstallations,
+  uninstallGithubAppInstallation,
 } from "@/features/github/github.api";
 import { useUserStore, useGithubStore } from "@/context";
 
@@ -1371,6 +1372,33 @@ function ConnectedAccountsPanel({
     }
   };
 
+  const uninstall = async () => {
+    if (busy || !activeInstallation || !canManage) return;
+    const confirmed = window.confirm(
+      `Uninstall the JeticLabs GitHub App from ${activeInstallation.accountLogin}? This removes repository access for every Jetic workspace using this installation.`,
+    );
+    if (!confirmed) return;
+
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await uninstallGithubAppInstallation(
+        workspaceId,
+        activeInstallation.installationId,
+      );
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.githubAppConnection(workspaceId),
+      });
+      useGithubStore.getState().reset();
+      setNotice("GitHub App uninstalled from GitHub.");
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const statusLabel = connected
     ? "Connected"
     : suspended
@@ -1386,7 +1414,7 @@ function ConnectedAccountsPanel({
       footer={
         <span>
           {connected
-            ? "The GitHub App is connected to this workspace."
+            ? "Connected to this workspace. Disconnect keeps the GitHub App installed; Uninstall removes it from GitHub for all workspaces."
             : suspended
               ? "The installation is suspended or was revoked. Reconnect it to restore repository access."
               : "Install the Jetic GitHub App to import repositories."}
@@ -1443,7 +1471,17 @@ function ConnectedAccountsPanel({
                   disabled={busy}
                   className={dangerButton}
                 >
-                  {busy ? "Disconnecting…" : "Disconnect"}
+                  {busy ? "Disconnecting…" : "Disconnect from workspace"}
+                </button>
+              )}
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={() => void uninstall()}
+                  disabled={busy}
+                  className="text-[11px] font-medium text-red-300 hover:text-red-200 hover:underline disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Uninstall from GitHub
                 </button>
               )}
             </>

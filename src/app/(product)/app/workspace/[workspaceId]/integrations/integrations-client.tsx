@@ -12,6 +12,7 @@ import {
   disconnectGithubAppInstallation,
   startGithubAppInstallation,
   syncGithubAppInstallations,
+  uninstallGithubAppInstallation,
 } from "@/features/github/github.api";
 import type { GitHubAppConnection } from "@/features/github/types";
 import { errorMessage } from "@/lib/api/browser";
@@ -154,6 +155,31 @@ export function IntegrationsClient({
           "No matching GitHub App installation was found for your GitHub account. Install the App first, or make sure the installation was created from this workspace.",
         );
       }
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const uninstall = async () => {
+    if (!activeInstallation || !canManage) return;
+    const confirmed = window.confirm(
+      `Uninstall the JeticLabs GitHub App from ${activeInstallation.accountLogin}? This removes repository access for every Jetic workspace using this installation.`,
+    );
+    if (!confirmed) return;
+
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await uninstallGithubAppInstallation(
+        workspaceId,
+        activeInstallation.installationId,
+      );
+      useGithubStore.getState().reset();
+      setNotice("GitHub App uninstalled from GitHub.");
+      await refresh();
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
@@ -311,14 +337,31 @@ export function IntegrationsClient({
                     {busy
                       ? "Working…"
                       : connected
-                        ? "Disconnect"
+                        ? "Disconnect from workspace"
                         : suspended
                           ? "Reconnect GitHub App"
                           : "Install GitHub App"}
                   </button>
                 )}
+                {connected && activeInstallation && canManage && (
+                  <button
+                    type="button"
+                    onClick={() => void uninstall()}
+                    disabled={busy}
+                    className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-red-400/20 bg-red-500/10 px-3 text-[12px] font-medium text-red-300 transition-colors hover:bg-red-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/30 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Uninstall from GitHub
+                  </button>
+                )}
               </div>
             </div>
+
+            {connected && (
+              <p className="jetic-muted text-[10.5px] leading-4">
+                Disconnect removes this workspace only. Uninstall from GitHub
+                removes the app installation for every workspace.
+              </p>
+            )}
           </article>
 
           {OTHER_INTEGRATIONS.map((integration) => (
