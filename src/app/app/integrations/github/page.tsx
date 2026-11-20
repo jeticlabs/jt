@@ -87,6 +87,7 @@ export default async function GitHubAppSetupPage({
   // has no signed Jetic state. Verify the installation through the GitHub App
   // API and attach only an installation that belongs to this signed-in user.
   if (!state) {
+    let connected = 0;
     let syncError: string | null = null;
     if (workspace) {
       try {
@@ -98,9 +99,7 @@ export default async function GitHubAppSetupPage({
             body: JSON.stringify({ workspaceId: workspace.id }),
           },
         );
-        if (result.connected > 0) {
-          redirect(`${workspaceHref}?github=connected`);
-        }
+        connected = result.connected;
       } catch (error) {
         if (error instanceof BackendError && error.isUnauthorized) {
           redirect(`/sign-in?next=${encodeURIComponent(setupPath(params))}`);
@@ -112,6 +111,10 @@ export default async function GitHubAppSetupPage({
               ? error.message
               : "The installation could not be synced.";
       }
+    }
+
+    if (connected > 0) {
+      redirect(`${workspaceHref}?github=connected`);
     }
 
     return (
@@ -129,6 +132,7 @@ export default async function GitHubAppSetupPage({
     );
   }
 
+  let workspaceSlug: string;
   try {
     const result = await backendFetch<{ workspaceSlug: string }>(
       "/v1/github/app/installations/complete",
@@ -138,9 +142,7 @@ export default async function GitHubAppSetupPage({
         body: JSON.stringify({ installationId, state }),
       },
     );
-    redirect(
-      `/app/workspace/${encodeURIComponent(result.workspaceSlug)}/integrations?github=connected`,
-    );
+    workspaceSlug = result.workspaceSlug;
   } catch (error) {
     if (error instanceof BackendError && error.isUnauthorized) {
       redirect(`/sign-in?next=${encodeURIComponent(setupPath(params))}`);
@@ -162,4 +164,8 @@ export default async function GitHubAppSetupPage({
       />
     );
   }
+
+  redirect(
+    `/app/workspace/${encodeURIComponent(workspaceSlug)}/integrations?github=connected`,
+  );
 }

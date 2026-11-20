@@ -18,6 +18,7 @@ import {
   ChevronDown,
   ChevronRight,
   Circle,
+  ExternalLink,
   Folder,
   GitBranch,
   Loader2,
@@ -1191,9 +1192,39 @@ export function CreateSandboxDialog({
                       )}
 
                     {repositoriesStatus !== "loading" && repositories.length === 0 && (
-                      <p className="jetic-muted px-4 py-8 text-center text-[12.5px]">
-                        This account has no repositories available.
-                      </p>
+                      <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
+                        <p className="jetic-muted max-w-md text-[12.5px] leading-5">
+                          {connectionQuery.data?.repositorySelection ===
+                          "selected"
+                            ? "GitHub reports no repositories granted to this installation. Open GitHub and select the repositories Jetic should be able to import."
+                            : "GitHub reports no repositories available for this account."}
+                        </p>
+                        {connectionQuery.data?.installationId && (
+                          <a
+                            href={`https://github.com/settings/installations/${encodeURIComponent(connectionQuery.data.installationId)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className={secondaryButton}
+                          >
+                            Manage repository access
+                            <ExternalLink size={12} className="ml-1" />
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void loadRepositories(workspaceId, {
+                              owner: selectedOwner,
+                              query: repoQuery,
+                              force: true,
+                            })
+                          }
+                          className={secondaryButton}
+                        >
+                          <RefreshCw size={12} className="mr-1" />
+                          Refresh repositories
+                        </button>
+                      </div>
                     )}
                   </div>
 
